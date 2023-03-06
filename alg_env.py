@@ -1,9 +1,14 @@
 import math
+from random import random
 
 import cv2
 import matplotlib
 
-from alg_GLOBALS import *
+# from alg_GLOBALS import *
+import numpy as np
+import torch
+from matplotlib import pyplot as plt
+from torch import cdist
 
 
 class Position:
