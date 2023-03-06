@@ -11,8 +11,8 @@ from collections import namedtuple, deque
 from termcolor import colored
 from scipy.spatial.distance import cdist
 
-import gym
-import pettingzoo
+# import gym
+# import pettingzoo
 import numpy as np
 import matplotlib.pyplot as plt
 import neptune.new as neptune
