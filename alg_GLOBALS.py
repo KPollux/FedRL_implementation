@@ -15,8 +15,8 @@ from scipy.spatial.distance import cdist
 # import pettingzoo
 import numpy as np
 import matplotlib.pyplot as plt
-import neptune.new as neptune
-from neptune.new.types import File
+# import neptune.new as neptune
+# from neptune.new.types import File
 
 import torch
 from torch import nn
