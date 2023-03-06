@@ -26,7 +26,7 @@ from alg_plotter import ALGPlotter
 from alg_env import FedRLEnv
 from alg_nets import CriticNet, ActorNet
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -40,7 +40,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --------------------------- # PARAMETERS # -------------------------- #
 # M_EPISODE = 10
-M_EPISODE = 64
+M_EPISODE = 6400
 BATCH_SIZE = 128  # size of the batches
 BUFFER_SIZE = 10000
 LR = 1e-4  # learning rate
