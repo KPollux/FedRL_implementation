@@ -339,7 +339,7 @@ if __name__ == '__main__':
     NEPTUNE = False
     PLOT_LIVE = True
     plotter = ALGPlotter(plot_life=PLOT_LIVE, plot_neptune=NEPTUNE, name='my_run_FedRL', tags=[ENV_NAME], plot_per=1)
-    plotter.neptune_init()
+    # plotter.neptune_init()
 
     TotalCumulativeReward = []
     SuccessfulEpisode = 0
