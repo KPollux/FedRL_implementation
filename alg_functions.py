@@ -1,7 +1,7 @@
 from alg_GLOBALS import *
 
 
-def load_and_play(env_to_load, times, path, plotter, env=None):
+def load_and_play(env_to_load, times, path, plotter, env):
     # load env
     # TODO
     if not env:

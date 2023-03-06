@@ -1,5 +1,8 @@
 import math
 
+import cv2
+import matplotlib
+
 from alg_GLOBALS import *
 
 
@@ -25,7 +28,7 @@ class Agent:
         self.state_size = self.state_side_size ** 2
         # self.name = f'agent_{self.type}_{self.id}'
         self.name = f'{self.type}'
-        self. domain = []
+        self.domain = []
         self.state = []
         self.distance_type = 'chebyshev'
         # self.distance_type = 'cityblock'
@@ -43,26 +46,40 @@ class Agent:
 
 
 def set_domain_and_state_of_agents(agents, positions):
+    # print(agents, positions)
     for agent in agents:
         agent.domain = []
+        # positions 中是所有的点，点是Position对象
+        # 将对象根据坐标转换为字典
         pos_dict = {(pos.x, pos.y): pos for pos in positions}
         # self position
+        # 位置对象，根据坐标取出
         agent.domain.append(pos_dict[(agent.x, agent.y)])
 
+        # 对于所有坐标，如果与agent的距离小于等于metric_radius，则加入domain
         for pos in positions:
             dist = cdist([[agent.x, agent.y]], [[pos.x, pos.y]], agent.distance_type)[0, 0]
+            # print(dist, agent.metric_radius)
             if dist <= agent.metric_radius:
                 # if not pos.occupied:
                 agent.domain.append(pos)
 
+        # print(agent.x, agent.y)
+        # for d in agent.domain:
+        #     print(d.x, d.y)
+
         side = agent.metric_radius * 2 + 1
-        agent.state = np.zeros((side, side))
+        # 超出地图应该全为1
+        agent.state = np.ones((side, side))
         for pos in agent.domain:
-            agent.state[agent.metric_radius - (agent.y - pos.y), agent.metric_radius - (agent.x - pos.x)] = float(pos.block)
+            agent.state[agent.metric_radius - (agent.y - pos.y), agent.metric_radius - (agent.x - pos.x)] = float(
+                pos.block)
+
+        # break
 
 
 def distance(pos1, pos2):
-    return math.sqrt(((pos1.x - pos2.x)**2) + ((pos1.y - pos2.y)**2))
+    return math.sqrt(((pos1.x - pos2.x) ** 2) + ((pos1.y - pos2.y) ** 2))
 
 
 class FedRLEnv:
@@ -73,6 +90,7 @@ class FedRLEnv:
     2. Normalize states of observations
 
     """
+
     def __init__(self, max_steps=25, side_size=32):
         self.steps_counter = 0
         self.max_steps = max_steps
@@ -116,9 +134,18 @@ class FedRLEnv:
 
         return t_observations
 
+    # get to batch
     def step(self, t_actions):
-        actions = {agent_name: action.detach().item() for agent_name, action in t_actions.items()}
+        # actions = {agent_name: action.detach().item() for agent_name, action in t_actions.items()}
+        # print(t_actions)
+        # t_actions = t_actions.unsqueeze(0)
+        # for t_action in t_actions:
+        t_action = t_actions[0]
+        actions = {'alpha': t_action[0].detach().item(), 'beta': t_action[1].detach().item()}
         # ACTION: 0,1,2,3,4 = stay ! ,  east > , south v , west < , north ^
+        # ori no stay
+        # ACTION: 0,1,2,3 = east > , south v , west < , north ^
+        # 初始化下一个状态的变量
         observations, done, infos = {}, False, {}
         rewards = {agent.name: 0 for agent in self.agents}
 
@@ -146,7 +173,8 @@ class FedRLEnv:
             done = True
 
         # INFO
-        pass
+        # if self.steps_counter == self.max_steps or dist <= 2:
+        infos = {'success': True if dist <= 2 else False}
 
         # TO TENSOR
         t_observations = {agent_name: torch.tensor(obs) for agent_name, obs in observations.items()}
@@ -162,34 +190,59 @@ class FedRLEnv:
 
     def _execute_action(self, agent_name, action):
         # ACTION: 0,1,2,3,4 = stay ! ,  east > , south v , west < , north ^
+        # ori no stay
+        # ACTION: 0,1,2,3 = east > , south v , west < , north ^
         agent = self.agent_dict[agent_name]
         return_value = -1
         # stay
-        if action != 0:
-            new_x, new_y = agent.x, agent.y
-            curr_pos = self.pos_dict[(new_x, new_y)]
+        # if action != 0:
+        new_x, new_y = agent.x, agent.y
+        curr_pos = self.pos_dict[(new_x, new_y)]
 
-            new_x = new_x + 1 if action == 1 else new_x  # east >
-            new_y = new_y - 1 if action == 2 else new_y  # south v
-            new_x = new_x - 1 if action == 3 else new_x  # west <
-            new_y = new_y + 1 if action == 4 else new_y  # north ^
+        new_x = new_x + 1 if action == 0 else new_x  # east >
+        new_y = new_y - 1 if action == 1 else new_y  # south v
+        new_x = new_x - 1 if action == 2 else new_x  # west <
+        new_y = new_y + 1 if action == 3 else new_y  # north ^
 
-            if (new_x, new_y) in self.pos_dict:
-                pos = self.pos_dict[(new_x, new_y)]
-                if not pos.block:
-                    # print(f'occ: {pos.occupied}, block: {pos.block}')
-                    curr_pos.occupied = False
-                    agent.x = new_x
-                    agent.y = new_y
-                    pos.occupied = True
-                else:
-                    return_value = -10
+        if (new_x, new_y) in self.pos_dict:
+            pos = self.pos_dict[(new_x, new_y)]
+            if not pos.block:
+                # print(f'occ: {pos.occupied}, block: {pos.block}')
+                curr_pos.occupied = False
+                agent.x = new_x
+                agent.y = new_y
+                pos.occupied = True
+            else:
+                return_value = -10
 
         # t_return_value = torch.tensor(return_value)
         return return_value
 
     def render(self, mode='human'):
-        return 'Plot is unavailable'
+        map = np.zeros((self.side_size, self.side_size))
+        for P in self.positions:
+            map[P.y][P.x] = 1 if P.block else 0
+
+        # for A in self.agents:
+        #     map[A.y][A.x] = 2
+
+        A1 = self.agents[0]
+        map[A1.y][A1.x] = 2
+        rect1 = matplotlib.patches.Rectangle((A1.x - (A1.metric_radius + .5),
+                                              A1.y - (A1.metric_radius + .5)),
+                                             A1.state_side_size, A1.state_side_size, fill=False)
+
+        A2 = self.agents[1]
+        map[A2.y][A2.x] = 1.5
+        rect2 = matplotlib.patches.Rectangle((A2.x - (A2.metric_radius + .5),
+                                              A2.y - (A2.metric_radius + .5)),
+                                             A2.state_side_size, A2.state_side_size, fill=False)
+
+        fig, ax = plt.subplots()
+        ax.add_patch(rect1)
+        ax.add_patch(rect2)
+
+        return map
 
     def observation_spaces(self):
         return {agent.name: agent.state for agent in self.agents}
@@ -198,10 +251,10 @@ class FedRLEnv:
         return {agent.name: agent.state_size for agent in self.agents}
 
     def action_spaces(self):
-        return {agent.name: list(range(5)) for agent in self.agents}
+        return {agent.name: list(range(4)) for agent in self.agents}
 
     def action_sizes(self):
-        return {agent.name: 5 for agent in self.agents}
+        return {agent.name: 4 for agent in self.agents}
 
     @staticmethod
     def _get_two_distant_positions(free_positions):
@@ -218,3 +271,28 @@ class FedRLEnv:
         # pos1, pos2 = random.sample(free_positions, 2)
 
         return pos1, pos2
+
+
+if __name__ == '__main__':
+    # --------------------------- # CREATE ENV # -------------------------- #
+    MAX_STEPS = 40
+    # SIDE_SIZE = 8
+    SIDE_SIZE = 16
+    # SIDE_SIZE = 32
+    ENV_NAME = 'grid'
+
+    env = FedRLEnv(max_steps=MAX_STEPS, side_size=SIDE_SIZE)
+    print(env.reset())
+
+    map = env.render()
+
+    plt.imshow(map)
+    plt.show()
+
+    # print(env.agents[0].x)
+
+
+
+    # print(map)
+
+    NUMBER_OF_GAMES = 10

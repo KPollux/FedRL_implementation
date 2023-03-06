@@ -26,9 +26,14 @@ class ActorNet(nn.Module):
         self.obs_size = obs_size
         self.entropy_term = 0
 
-    def forward(self, state: torch.FloatTensor):
-        reshaped_state = state.reshape((-1,)).float()
-        value = self.net(reshaped_state)
+    def forward(self, state):
+        # print(state)
+        # print(state.shape)
+        # reshaped_state = state.reshape((-1,)).float()
+        # print(reshaped_state)
+        # print(reshaped_state.shape)
+        # exit()
+        value = self.net(state.float())
         return value
 
 

@@ -72,6 +72,7 @@ class ALGPlotter:
             # self.list_state_mean_2.append(state_stat_mean[1])
             # self.list_state_std_1.append(state_stat_std[0])
             # self.list_state_std_2.append(state_stat_std[1])
+            # print(i, self.plot_per, i % self.plot_per)
 
             if i % self.plot_per == 0:
                 # AX 1
@@ -104,7 +105,9 @@ class ALGPlotter:
                 self.ax_2.set_title('Scores')
                 self.ax_2.legend()
 
+                # self.fig.pause(0.05)
                 plt.pause(0.05)
+                # self.fig.show()
 
     def plot_close(self):
         if self.plot_life:
