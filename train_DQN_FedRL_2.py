@@ -87,35 +87,55 @@ def select_action(state):
     eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
 
+    # print(state[..., :9].shape)
+    # print(state[..., 9:].shape)
+    state_alpha = state[..., :9]
+    state_beta = state[..., 9:]
+
     # t_alpha_action = torch.tensor(random.choice(env.action_spaces()['alpha'])).cuda()
     # print(t_alpha_action)
     # exit()
     # 常规情况选择价值最高的动作
-    if sample > eps_threshold or 1:
+    if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
 
-            t_alpha_action = policy_net(state).max(1)[1]
-            # print(policy_net(state))
-            # print(t_alpha_action)
-            # print(policy_net(state).max(1))
-            # print(policy_net(state).max(1)[0])
-            # exit()
+            Q_b = Q_policy_beta(state_beta)
+            t_beta_action = torch.argmax(Q_b)
+            C_beta = torch.max(Q_b)
 
+
+            t_alpha_action_q_values = Q_policy_alpha(state_alpha)
+            q_f_alpha_values_list = []
+            # print(t_alpha_action_q_values)
+            for t_action_q_value in t_alpha_action_q_values.squeeze():
+                # 堆叠alpha的Q值和C_beta
+                # print(t_action_q_value, C_beta)
+                input_q_f = torch.stack((t_action_q_value, C_beta))
+                # 输入Q_f_alpha
+                q_f_alpha_values_list.append(Q_f_alpha(input_q_f))
+            q_f_alpha_values_list = torch.stack(q_f_alpha_values_list)
+            t_alpha_action = torch.argmax(q_f_alpha_values_list)
 
     # 当随机值超过阈值时，随机选取 - exploration
     else:
         # return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
         t_alpha_action = torch.tensor(random.choice(env.action_spaces()['alpha'])).cuda()
+        t_beta_action = torch.tensor(random.choice(env.action_spaces()['beta'])).cuda()
+
+        C_beta = Q_policy_beta(state_beta)[t_beta_action]
 
     # print(t_alpha_action.shape)
 
-    t_beta_action = torch.tensor(random.choices(env.action_spaces()['beta'], k=len(t_alpha_action))).cuda()
+
 
     # t_actions = torch.stack((t_alpha_action, t_beta_action))
     # t_actions = zip(*t_actions)
+
+    print(t_alpha_action, t_beta_action)
+    exit()
 
     return t_alpha_action, t_beta_action
 
@@ -304,119 +324,119 @@ if __name__ == '__main__':
         # 默认start=0, step=1
         for t in count():
             t_alpha_action, t_beta_action = select_action(state)  # 选择一个动作
-            # t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
-            # print(t_actions)
-            # merge two tensors
-            t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
-            # print(t_actions)
-            # exit()
-            observation, reward, done, _ = env.step(t_actions)  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
-            # print(observation, reward, done, _)
-            # exit()
-
-            # alpha和beta拉长成一维
-
-            observation = observation['alpha'].reshape((1, -1))
-            print(observation)
-            exit()
-            reward = torch.tensor([reward['alpha']], device=device)
-
-            # if done:
-            #     next_state = None
-            # else:
-            next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
-
-            # Store the transition in memory
-            memory.push(state, t_actions, next_state, reward)
-
-            # Move to the next state
-            state = next_state
-
-            # Perform one step of the optimization (on the policy network)
-            optimize_model()
-
-            # Soft update of the target network's weights
-            # θ′ ← τ θ + (1 −τ )θ′
-            target_net_state_dict = target_net.state_dict()
-            policy_net_state_dict = policy_net.state_dict()
-            for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (1 - TAU)
-            target_net.load_state_dict(target_net_state_dict)
-
-            if done:
-                episode_durations.append(float(reward.cpu().numpy()[0]))
-                # print(episode_durations)
-
-                if i_episode % 100 == 0:
-                    # plot_durations()
-                    last_100 = episode_durations[-100:]
-                    average = sum(last_100) / len(last_100)
-                    print('i_episode', i_episode, 'running_avg_reward: ', average)
-                break
-
-        logs['train']['rewards'] = episode_durations
-
-        with open(folder_name + "/train.txt", 'w') as convert_file:
-            convert_file.write(json.dumps(logs))
-
-
-
-    # eval
-    torch.save(policy_net.state_dict(), f'{folder_name}/model.pt')
-
-    NEPTUNE = False
-    PLOT_LIVE = True
-    plotter = ALGPlotter(plot_life=PLOT_LIVE, plot_neptune=NEPTUNE, name='my_run_FedRL', tags=[ENV_NAME], plot_per=1)
-    # plotter.neptune_init()
-
-    TotalCumulativeReward = []
-    SuccessfulEpisode = 0
-    eval_round = 8
-
-    for i_eval in range(eval_round):
-        state = env.reset()
-        state = state['alpha'].reshape((1, -1))
-        state = state.cuda()
-        for t in count():
-            t_alpha_action, t_beta_action = select_action(state)
-            t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
-            observation, reward, done, info = env.step(t_actions)
-            # observation = observation['alpha'].reshape((1, -1))
-            reward = float(reward['alpha'])
-            TotalCumulativeReward.append(reward)
-            logs['eval']['rewards'].append(reward)
-            if done:
-                if info['success']:
-                    SuccessfulEpisode += 1
-                logs['eval']['successful'].append(info['success'])
-                # plotter.plot(i_eval, env, TotalCumulativeReward)
-                break
-
-    # plotter.plot(i_eval, env, TotalCumulativeReward)
-    # logs['eval']['rewards'] = TotalCumulativeReward
-
-        with open(folder_name + "/train.txt", 'w') as convert_file:
-            convert_file.write(json.dumps(logs))
-
-    print('AvgCumulativeReward', np.sum(TotalCumulativeReward)/eval_round)
-    print('SuccessfulRate', SuccessfulEpisode / eval_round)
-    print()
-    # PLOT
-    # scores.append(sum(t_rewards.values()).item())
-    # steps += 1
-    # global_steps += 1
-    # plotter.neptune_plot({
-    #     'epsilon': epsilon,
-    #     'alpha_loss': alpha_loss.item(), 'beta_loss': beta_loss.item(),
-    #     'action alpha': t_alpha_action.item(), 'action beta': t_beta_action.item(),
-    #     'state alpha': t_alpha_obs.mean().item(), 'state beta': t_beta_obs.mean().item(),
-    #     'buffer size': len(replay_buffer_alpha),
-    # })
-    # if i_episode > M_EPISODE - PLOT_LAST and done:
-    #     # print('plot', M_EPISODE, PLOT_LAST, done)
-    #     plotter.plot(i_episode, env, scores)
-
-    # print('Complete')
-    # plot_durations(show_result=True)
-    # plt.ioff()
-    # plt.show()
+    #         # t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
+    #         # print(t_actions)
+    #         # merge two tensors
+    #         t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
+    #         # print(t_actions)
+    #         # exit()
+    #         observation, reward, done, _ = env.step(t_actions)  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
+    #         # print(observation, reward, done, _)
+    #         # exit()
+    #
+    #         # alpha和beta拉长成一维
+    #
+    #         observation = observation['alpha'].reshape((1, -1))
+    #         print(observation)
+    #         exit()
+    #         reward = torch.tensor([reward['alpha']], device=device)
+    #
+    #         # if done:
+    #         #     next_state = None
+    #         # else:
+    #         next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
+    #
+    #         # Store the transition in memory
+    #         memory.push(state, t_actions, next_state, reward)
+    #
+    #         # Move to the next state
+    #         state = next_state
+    #
+    #         # Perform one step of the optimization (on the policy network)
+    #         optimize_model()
+    #
+    #         # Soft update of the target network's weights
+    #         # θ′ ← τ θ + (1 −τ )θ′
+    #         target_net_state_dict = target_net.state_dict()
+    #         policy_net_state_dict = policy_net.state_dict()
+    #         for key in policy_net_state_dict:
+    #             target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (1 - TAU)
+    #         target_net.load_state_dict(target_net_state_dict)
+    #
+    #         if done:
+    #             episode_durations.append(float(reward.cpu().numpy()[0]))
+    #             # print(episode_durations)
+    #
+    #             if i_episode % 100 == 0:
+    #                 # plot_durations()
+    #                 last_100 = episode_durations[-100:]
+    #                 average = sum(last_100) / len(last_100)
+    #                 print('i_episode', i_episode, 'running_avg_reward: ', average)
+    #             break
+    #
+    #     logs['train']['rewards'] = episode_durations
+    #
+    #     with open(folder_name + "/train.txt", 'w') as convert_file:
+    #         convert_file.write(json.dumps(logs))
+    #
+    #
+    #
+    # # eval
+    # torch.save(policy_net.state_dict(), f'{folder_name}/model.pt')
+    #
+    # NEPTUNE = False
+    # PLOT_LIVE = True
+    # plotter = ALGPlotter(plot_life=PLOT_LIVE, plot_neptune=NEPTUNE, name='my_run_FedRL', tags=[ENV_NAME], plot_per=1)
+    # # plotter.neptune_init()
+    #
+    # TotalCumulativeReward = []
+    # SuccessfulEpisode = 0
+    # eval_round = 8
+    #
+    # for i_eval in range(eval_round):
+    #     state = env.reset()
+    #     state = state['alpha'].reshape((1, -1))
+    #     state = state.cuda()
+    #     for t in count():
+    #         t_alpha_action, t_beta_action = select_action(state)
+    #         t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
+    #         observation, reward, done, info = env.step(t_actions)
+    #         # observation = observation['alpha'].reshape((1, -1))
+    #         reward = float(reward['alpha'])
+    #         TotalCumulativeReward.append(reward)
+    #         logs['eval']['rewards'].append(reward)
+    #         if done:
+    #             if info['success']:
+    #                 SuccessfulEpisode += 1
+    #             logs['eval']['successful'].append(info['success'])
+    #             # plotter.plot(i_eval, env, TotalCumulativeReward)
+    #             break
+    #
+    # # plotter.plot(i_eval, env, TotalCumulativeReward)
+    # # logs['eval']['rewards'] = TotalCumulativeReward
+    #
+    #     with open(folder_name + "/train.txt", 'w') as convert_file:
+    #         convert_file.write(json.dumps(logs))
+    #
+    # print('AvgCumulativeReward', np.sum(TotalCumulativeReward)/eval_round)
+    # print('SuccessfulRate', SuccessfulEpisode / eval_round)
+    # print()
+    # # PLOT
+    # # scores.append(sum(t_rewards.values()).item())
+    # # steps += 1
+    # # global_steps += 1
+    # # plotter.neptune_plot({
+    # #     'epsilon': epsilon,
+    # #     'alpha_loss': alpha_loss.item(), 'beta_loss': beta_loss.item(),
+    # #     'action alpha': t_alpha_action.item(), 'action beta': t_beta_action.item(),
+    # #     'state alpha': t_alpha_obs.mean().item(), 'state beta': t_beta_obs.mean().item(),
+    # #     'buffer size': len(replay_buffer_alpha),
+    # # })
+    # # if i_episode > M_EPISODE - PLOT_LAST and done:
+    # #     # print('plot', M_EPISODE, PLOT_LAST, done)
+    # #     plotter.plot(i_episode, env, scores)
+    #
+    # # print('Complete')
+    # # plot_durations(show_result=True)
+    # # plt.ioff()
+    # # plt.show()

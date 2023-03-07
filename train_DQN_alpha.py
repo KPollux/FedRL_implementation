@@ -79,7 +79,7 @@ class ReplayMemory(object):
 
 
 # 动作选取
-def select_action(state):
+def select_action(state, eval=False):
     global steps_done, EPS_START, EPS_END, EPS_DECAY
     sample = random.random()
 
@@ -91,7 +91,7 @@ def select_action(state):
     # print(t_alpha_action)
     # exit()
     # 常规情况选择价值最高的动作
-    if sample > eps_threshold or 1:
+    if sample > eps_threshold or eval:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
@@ -355,7 +355,7 @@ if __name__ == '__main__':
         state = state['alpha'].reshape((1, -1))
         state = state.cuda()
         for t in count():
-            t_alpha_action, t_beta_action = select_action(state)
+            t_alpha_action, t_beta_action = select_action(state, eval=True)
             t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
             observation, reward, done, info = env.step(t_actions)
             # observation = observation['alpha'].reshape((1, -1))
