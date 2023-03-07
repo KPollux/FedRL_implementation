@@ -42,7 +42,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # M_EPISODE = 10
 M_EPISODE = 6400
 BATCH_SIZE = 128  # size of the batches
-BUFFER_SIZE = 10000
+BUFFER_SIZE = 128
 LR = 1e-4  # learning rate
 # LR_ACTOR = 1e-3  # learning rate
 GAMMA = 0.99  # discount factor
@@ -288,6 +288,7 @@ if __name__ == '__main__':
 
         # count()，它返回一个迭代器，该迭代器从指定数字开始生成无限连续数字
         # 默认start=0, step=1
+        CumulativeReward = 0
         for t in count():
             t_alpha_action, t_beta_action = select_action(state)  # 选择一个动作
             # t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
@@ -325,10 +326,12 @@ if __name__ == '__main__':
                 target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (1 - TAU)
             target_net.load_state_dict(target_net_state_dict)
 
-            if done:
-                episode_durations.append(float(reward.cpu().numpy()[0]))
-                # print(episode_durations)
+            CumulativeReward += float(reward.cpu().numpy()[0])
 
+
+            if done:
+                # print(episode_durations)
+                episode_durations.append(CumulativeReward)
                 if i_episode % 100 == 0:
                     # plot_durations()
                     last_100 = episode_durations[-100:]
@@ -359,15 +362,17 @@ if __name__ == '__main__':
         state = env.reset()
         state = state['alpha'].reshape((1, -1))
         state = state.cuda()
+        CumulativeReward = 0
         for t in count():
             t_alpha_action, t_beta_action = select_action(state, eval=True)
             t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
             observation, reward, done, info = env.step(t_actions)
             # observation = observation['alpha'].reshape((1, -1))
-            reward = float(reward['alpha'])
-            TotalCumulativeReward.append(reward)
-            logs['eval']['rewards'].append(reward)
+            CumulativeReward += float(reward['alpha'].cpu().numpy()[0])
             if done:
+                reward = CumulativeReward
+                TotalCumulativeReward.append(reward)
+                logs['eval']['rewards'].append(reward)
                 if info['success']:
                     SuccessfulEpisode += 1
                 logs['eval']['successful'].append(info['success'])
