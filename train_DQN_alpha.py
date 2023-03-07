@@ -26,7 +26,7 @@ from alg_plotter import ALGPlotter
 from alg_env import FedRLEnv
 from alg_nets import CriticNet, ActorNet
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -366,7 +366,10 @@ if __name__ == '__main__':
         for t in count():
             t_alpha_action, t_beta_action = select_action(state, eval=True)
             t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
-            observation, reward, done, info = env.step(t_actions)
+            state, reward, done, info = env.step(t_actions)
+            state = state['alpha'].reshape((1, -1))
+            state = state.cuda()
+
             # observation = observation['alpha'].reshape((1, -1))
             CumulativeReward += float(reward['alpha'].cpu().numpy()[0])
             if done:

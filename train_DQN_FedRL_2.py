@@ -26,7 +26,7 @@ from alg_plotter import ALGPlotter
 from alg_env import FedRLEnv
 from alg_nets import CriticNet, ActorNet
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -391,6 +391,7 @@ if __name__ == '__main__':
 
         # count()，它返回一个迭代器，该迭代器从指定数字开始生成无限连续数字
         # 默认start=0, step=1
+        CumulativeReward = 0
         for t in count():
             t_alpha_action, t_beta_action = select_action(state)  # 选择一个动作
             # t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
@@ -433,9 +434,10 @@ if __name__ == '__main__':
             # for key in policy_net_state_dict:
             #     target_net_state_dict[key] = policy_net_state_dict[key] * TAU + target_net_state_dict[key] * (1 - TAU)
             # target_net.load_state_dict(target_net_state_dict)
+            CumulativeReward += float(reward.cpu().numpy()[0])
 
             if done:
-                episode_durations.append(float(reward.cpu().numpy()[0]))
+                episode_durations.append(CumulativeReward)
                 # print(episode_durations)
 
                 if i_episode % 100 == 0:
@@ -468,15 +470,20 @@ if __name__ == '__main__':
         state = env.reset()
         state = torch.cat((state['alpha'].reshape((1, -1)), state['beta'].reshape((1, -1))), 1)
         state = state.cuda()
+        CumulativeReward = 0
         for t in count():
             t_alpha_action, t_beta_action = select_action(state)
             t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
-            observation, reward, done, info = env.step(t_actions)
+            state, reward, done, info = env.step(t_actions)
+            state = torch.cat((state['alpha'].reshape((1, -1)), state['beta'].reshape((1, -1))), 1)
+            state = state.cuda()
+
             # observation = observation['alpha'].reshape((1, -1))
-            reward = float(reward['alpha'])
-            TotalCumulativeReward.append(reward)
-            logs['eval']['rewards'].append(reward)
+            CumulativeReward += float(reward['alpha'].cpu().numpy()[0])
             if done:
+                reward = float(reward['alpha'])
+                TotalCumulativeReward.append(reward)
+                logs['eval']['rewards'].append(reward)
                 if info['success']:
                     SuccessfulEpisode += 1
                 logs['eval']['successful'].append(info['success'])
