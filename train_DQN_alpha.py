@@ -79,7 +79,7 @@ class ReplayMemory(object):
 
 
 # 动作选取
-def select_action(state):
+def select_action(state, eval=False):
     global steps_done, EPS_START, EPS_END, EPS_DECAY
     sample = random.random()
 
@@ -91,13 +91,14 @@ def select_action(state):
     # print(t_alpha_action)
     # exit()
     # 常规情况选择价值最高的动作
-    if sample > eps_threshold or 1:
+    if sample > eps_threshold or eval:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
 
-            t_alpha_action = policy_net(state).max(1)[1]
+            t_alpha_action = policy_net(state).max(1)[1].squeeze()
+            # print(sample, eps_threshold)
             # print(policy_net(state))
             # print(t_alpha_action)
             # print(policy_net(state).max(1))
@@ -109,13 +110,17 @@ def select_action(state):
     else:
         # return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
         t_alpha_action = torch.tensor(random.choice(env.action_spaces()['alpha'])).cuda()
+        # print(sample, eps_threshold)
 
     # print(t_alpha_action.shape)
 
-    t_beta_action = torch.tensor(random.choices(env.action_spaces()['beta'], k=len(t_alpha_action))).cuda()
+    t_beta_action = torch.tensor(random.choice(env.action_spaces()['beta'])).cuda()
 
     # t_actions = torch.stack((t_alpha_action, t_beta_action))
     # t_actions = zip(*t_actions)
+    # print(1 or 0)
+    # print(1 and 0)
+    # print(t_alpha_action, t_beta_action)
 
     return t_alpha_action, t_beta_action
 
@@ -355,7 +360,7 @@ if __name__ == '__main__':
         state = state['alpha'].reshape((1, -1))
         state = state.cuda()
         for t in count():
-            t_alpha_action, t_beta_action = select_action(state)
+            t_alpha_action, t_beta_action = select_action(state, eval=True)
             t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
             observation, reward, done, info = env.step(t_actions)
             # observation = observation['alpha'].reshape((1, -1))
