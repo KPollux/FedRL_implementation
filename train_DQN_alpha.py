@@ -217,7 +217,9 @@ def optimize_model():
     criterion = nn.MSELoss()
     # print(state_action_values, expected_state_action_values.unsqueeze(1))
     # exit()
-    loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+    # print(state_action_values.dtype)
+    # print(expected_state_action_values.unsqueeze(1).dtype)
+    loss = criterion(state_action_values.float(), expected_state_action_values.unsqueeze(1).float())
 
     # Optimize the model
     optimizer.zero_grad()
