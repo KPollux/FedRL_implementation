@@ -79,7 +79,7 @@ class ReplayMemory(object):
 
 
 # 动作选取
-def select_action(state):
+def select_action(state, eval=False):
     global steps_done, EPS_START, EPS_END, EPS_DECAY
     sample = random.random()
 
@@ -96,28 +96,40 @@ def select_action(state):
     # print(t_alpha_action)
     # exit()
     # 常规情况选择价值最高的动作
-    if sample > eps_threshold:
+    if sample > eps_threshold or eval:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
 
-            Q_b = Q_policy_beta(state_beta)
-            t_beta_action = torch.argmax(Q_b)
-            C_beta = torch.max(Q_b)
+            C_beta = Q_policy_beta(state_beta)
+            t_beta_action = torch.argmax(C_beta)
+            # C_beta = torch.max(Q_b)
 
 
             t_alpha_action_q_values = Q_policy_alpha(state_alpha)
-            q_f_alpha_values_list = []
-            # print(t_alpha_action_q_values)
-            for t_action_q_value in t_alpha_action_q_values.squeeze():
-                # 堆叠alpha的Q值和C_beta
-                # print(t_action_q_value, C_beta)
-                input_q_f = torch.stack((t_action_q_value, C_beta))
-                # 输入Q_f_alpha
-                q_f_alpha_values_list.append(Q_f_alpha(input_q_f))
-            q_f_alpha_values_list = torch.stack(q_f_alpha_values_list)
+
+            # print(t_alpha_action_q_values, C_beta)
+            input_q_f = torch.stack((t_alpha_action_q_values, C_beta), dim=1).squeeze()
+            input_q_f = input_q_f.permute(1, 0)
+            # print(input_q_f)
+            # exit()
+
+            # q_f_alpha_values_list = []
+            # # print(t_alpha_action_q_values)
+            # for t_action_q_value in t_alpha_action_q_values.squeeze():
+            #     # 堆叠alpha的Q值和C_beta
+            #     # print(t_action_q_value, C_beta)
+            #     input_q_f = torch.stack((t_action_q_value, C_beta))
+            #     input_q_f = input_q_f.cuda()
+            #     # 输入Q_f_alpha
+            #     q_f_alpha_values_list.append(Q_f_alpha(input_q_f))
+            # q_f_alpha_values_list = torch.stack(q_f_alpha_values_list)
+            q_f_alpha_values_list = Q_f_alpha(input_q_f)
             t_alpha_action = torch.argmax(q_f_alpha_values_list)
+
+            t_alpha_action = t_alpha_action.cuda()
+            t_beta_action = t_beta_action.cuda()
 
     # 当随机值超过阈值时，随机选取 - exploration
     else:
@@ -125,7 +137,7 @@ def select_action(state):
         t_alpha_action = torch.tensor(random.choice(env.action_spaces()['alpha'])).cuda()
         t_beta_action = torch.tensor(random.choice(env.action_spaces()['beta'])).cuda()
 
-        C_beta = Q_policy_beta(state_beta)[t_beta_action]
+        # C_beta = Q_policy_beta(state_beta)[t_beta_action]
 
     # print(t_alpha_action.shape)
 
@@ -134,8 +146,8 @@ def select_action(state):
     # t_actions = torch.stack((t_alpha_action, t_beta_action))
     # t_actions = zip(*t_actions)
 
-    print(t_alpha_action, t_beta_action)
-    exit()
+    # print(t_alpha_action, t_beta_action)
+    # exit()
 
     return t_alpha_action, t_beta_action
 
@@ -197,7 +209,32 @@ def optimize_model():
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
 
+    state_batch_alpha = state_batch[..., :9]
+    state_batch_beta = state_batch[..., 9:]
+
+    action_batch_alpha = action_batch[..., 0]
+    action_batch_alpha = action_batch[..., 1]
     # print(state_batch.shape)
+    # print(state_batch_alpha.shape)
+    # print(state_batch_beta.shape)
+
+    # CALL C_BETA
+    # C_beta = beta_compute_q_beta_j(sample_index)
+    # sample_tuple_beta = replay_buffer_beta[sample_index]
+    # t_beta_obs, t_beta_action = sample_tuple_beta
+    C_beta = Q_policy_beta(state_batch_beta)[action_batch_alpha]
+    print(C_beta.shape)
+    exit()
+
+    # COMPUTE Y
+    t_sample_alpha_action_q_values = Q_alpha(t_sample_alpha_new_observation)  # !
+    q_f_alpha_values_list = []
+    for t_sample_action_q_value in t_sample_alpha_action_q_values:
+        input_q_f = torch.stack((t_sample_action_q_value, C_beta))
+        q_f_alpha_values_list.append(Q_f_alpha(input_q_f))
+    q_f_alpha_values_list = torch.stack(q_f_alpha_values_list)
+    max_C_f_alpha = torch.max(q_f_alpha_values_list)
+
     # print(action_batch.shape)
     # print(reward_batch.shape)
     # exit()
@@ -274,7 +311,7 @@ if __name__ == '__main__':
             Q_target_alpha = ActorNet(i_agent.state_size, 4).cuda()
             Q_target_alpha.load_state_dict(Q_policy_alpha.state_dict())
 
-            Q_f_alpha = ActorNet(2, 1)
+            Q_f_alpha = ActorNet(2, 1).cuda()
         if i_agent.type == 'beta':
             Q_policy_beta = ActorNet(i_agent.state_size, 4).cuda()
             Q_target_beta = ActorNet(i_agent.state_size, 4).cuda()
@@ -324,36 +361,38 @@ if __name__ == '__main__':
         # 默认start=0, step=1
         for t in count():
             t_alpha_action, t_beta_action = select_action(state)  # 选择一个动作
-    #         # t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
-    #         # print(t_actions)
-    #         # merge two tensors
-    #         t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
-    #         # print(t_actions)
-    #         # exit()
-    #         observation, reward, done, _ = env.step(t_actions)  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
-    #         # print(observation, reward, done, _)
-    #         # exit()
-    #
-    #         # alpha和beta拉长成一维
-    #
-    #         observation = observation['alpha'].reshape((1, -1))
-    #         print(observation)
-    #         exit()
-    #         reward = torch.tensor([reward['alpha']], device=device)
-    #
-    #         # if done:
-    #         #     next_state = None
-    #         # else:
-    #         next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
-    #
-    #         # Store the transition in memory
-    #         memory.push(state, t_actions, next_state, reward)
-    #
-    #         # Move to the next state
-    #         state = next_state
-    #
-    #         # Perform one step of the optimization (on the policy network)
-    #         optimize_model()
+            # t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
+            # print(t_actions)
+            # merge two tensors
+            t_actions = torch.stack((t_alpha_action, t_beta_action)).view(1, -1)
+            # print(t_actions)
+            # exit()
+            observation, reward, done, _ = env.step(t_actions)  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
+            # print(observation, reward, done, _)
+            # exit()
+
+            # alpha和beta拉长成一维
+
+            observation = torch.cat((observation['alpha'].reshape((1, -1)), observation['beta'].reshape((1, -1))), 1)
+            # print(observation)
+            # exit()
+            reward = torch.tensor([reward['alpha']], device=device)
+            # print(reward)
+            # exit()
+
+            # if done:
+            #     next_state = None
+            # else:
+            next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
+
+            # Store the transition in memory
+            memory.push(state, t_actions, next_state, reward)
+
+            # Move to the next state
+            state = next_state
+
+            # Perform one step of the optimization (on the policy network)
+            optimize_model()
     #
     #         # Soft update of the target network's weights
     #         # θ′ ← τ θ + (1 −τ )θ′
