@@ -10,7 +10,7 @@ import matplotlib as mpl
 import numpy as np
 from tqdm import trange
 
-mpl.use('TkAgg')
+# mpl.use('TkAgg')
 import matplotlib
 import matplotlib.pyplot as plt
 from collections import namedtuple, deque
@@ -40,7 +40,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --------------------------- # PARAMETERS # -------------------------- #
 # M_EPISODE = 10
-M_EPISODE = 64
+M_EPISODE = 6400
 BATCH_SIZE = 128  # size of the batches
 BUFFER_SIZE = 10000
 LR = 1e-4  # learning rate
@@ -214,6 +214,8 @@ def optimize_model():
 
     # Compute Huber loss
     criterion = nn.SmoothL1Loss()
+    print(state_action_values, expected_state_action_values.unsqueeze(1))
+    exit()
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
@@ -230,9 +232,9 @@ if __name__ == '__main__':
     env = FedRLEnv(max_steps=MAX_STEPS, side_size=SIDE_SIZE)
 
     folder_name = f"runs/{ENV_NAME}/" + time.asctime(time.gmtime()).replace(" ", "_").replace(":", "_")
-    # os.makedirs('runs/', exist_ok=True)
-    # os.makedirs(f'runs/{ENV_NAME}/', exist_ok=True)
-    # os.makedirs(folder_name, exist_ok=True)
+    os.makedirs('runs/', exist_ok=True)
+    os.makedirs(f'runs/{ENV_NAME}/', exist_ok=True)
+    os.makedirs(folder_name, exist_ok=True)
 
     # print(env.action_space.n)  # ACTION: 0,1,2,3 = east > , south v , west < , north ^
 
@@ -246,30 +248,13 @@ if __name__ == '__main__':
 
     # --------------------------- # NETS # -------------------------- #
     # 初始化policy_net、target_net
-    Q_policy_alpha, Q_target_alpha, Q_f_alpha = None, None, None
-    Q_policy_beta, Q_target_beta, Q_f_beta = None, None, None
     for i_agent in env.agents:
         if i_agent.type == 'alpha':
-            Q_policy_alpha = ActorNet(i_agent.state_size, 4).cuda()
-            Q_target_alpha = ActorNet(i_agent.state_size, 4).cuda()
-            Q_target_alpha.load_state_dict(Q_policy_alpha.state_dict())
+            policy_net = ActorNet(i_agent.state_size, 4).cuda()
+            target_net = ActorNet(i_agent.state_size, 4).cuda()
+            target_net.load_state_dict(policy_net.state_dict())
 
-            Q_f_alpha = ActorNet(2, 1)
-        if i_agent.type == 'beta':
-            Q_policy_beta = ActorNet(i_agent.state_size, 4).cuda()
-            Q_target_beta = ActorNet(i_agent.state_size, 4).cuda()
-            Q_target_beta.load_state_dict(Q_policy_beta.state_dict())
-
-            Q_f_beta = Q_f_alpha
-
-    # --------------------------- # OPTIMIZERS # -------------------------- #
-    # optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
-    Q_alpha_optim = optim.AdamW(Q_policy_alpha.parameters(), lr=LR, amsgrad=True)
-    Q_f_alpha_optim = torch.optim.AdamW(Q_f_alpha.parameters(), lr=LR, amsgrad=True)
-
-    Q_beta_optim = torch.optim.AdamW(Q_policy_beta.parameters(), lr=LR, amsgrad=True)
-    Q_f_beta_optim = torch.optim.AdamW(Q_f_beta.parameters(), lr=LR, amsgrad=True)
-
+    optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
     memory = ReplayMemory(BUFFER_SIZE)
 
     # --------------------------- # TRAIN # -------------------------- #
@@ -288,15 +273,8 @@ if __name__ == '__main__':
     for i_episode in trange(num_episodes):
         # Initialize the environment and get it's state
         state = env.reset()
-        # print(state)
-        # a和b的状态编码到一起，方便存储
-        state = torch.cat((state['alpha'].reshape((1, -1)), state['beta'].reshape((1, -1))), 1)
-        # print(state.shape)
-        # print(state[..., :9].shape)
-        # print(state[..., 9:].shape)
-        # state = state['alpha'].reshape((1, -1))
-        # alpha和beta拉长成一维
-        # exit()
+        state = state['alpha'].reshape((1, -1))
+
         # alpha 矩阵
         state = state.cuda()
 
@@ -313,18 +291,14 @@ if __name__ == '__main__':
             observation, reward, done, _ = env.step(t_actions)  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
             # print(observation, reward, done, _)
             # exit()
-
-            # alpha和beta拉长成一维
-
+            # 仅保留alpha
             observation = observation['alpha'].reshape((1, -1))
-            print(observation)
-            exit()
             reward = torch.tensor([reward['alpha']], device=device)
 
-            # if done:
-            #     next_state = None
-            # else:
-            next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
+            if done:
+                next_state = None
+            else:
+                next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
 
             # Store the transition in memory
             memory.push(state, t_actions, next_state, reward)
@@ -371,7 +345,7 @@ if __name__ == '__main__':
 
     TotalCumulativeReward = []
     SuccessfulEpisode = 0
-    eval_round = 8
+    eval_round = 800
 
     for i_eval in range(eval_round):
         state = env.reset()

@@ -10,7 +10,7 @@ import matplotlib as mpl
 import numpy as np
 from tqdm import trange
 
-mpl.use('TkAgg')
+# mpl.use('TkAgg')
 import matplotlib
 import matplotlib.pyplot as plt
 from collections import namedtuple, deque
@@ -26,7 +26,7 @@ from alg_plotter import ALGPlotter
 from alg_env import FedRLEnv
 from alg_nets import CriticNet, ActorNet
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -213,7 +213,10 @@ def optimize_model():
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch  # 当前奖励+下一个状态的奖励，更新Q
 
     # Compute Huber loss
-    criterion = nn.SmoothL1Loss()
+    # criterion = nn.SmoothL1Loss()
+    criterion = nn.MSELoss()
+    # print(state_action_values, expected_state_action_values.unsqueeze(1))
+    # exit()
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
@@ -272,7 +275,7 @@ if __name__ == '__main__':
         # Initialize the environment and get it's state
         state = env.reset()
         state = state['alpha'].reshape((1, -1))
-        # print(state)
+
         # alpha 矩阵
         state = state.cuda()
 
@@ -293,10 +296,10 @@ if __name__ == '__main__':
             observation = observation['alpha'].reshape((1, -1))
             reward = torch.tensor([reward['alpha']], device=device)
 
-            # if done:
-            #     next_state = None
-            # else:
-            next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
+            if done:
+                next_state = None
+            else:
+                next_state = observation.cuda()  # 如果没有终止则继续记录下一个状态
 
             # Store the transition in memory
             memory.push(state, t_actions, next_state, reward)
@@ -370,7 +373,7 @@ if __name__ == '__main__':
         with open(folder_name + "/train.txt", 'w') as convert_file:
             convert_file.write(json.dumps(logs))
 
-    print('AvgCumulativeReward', np.average(TotalCumulativeReward))
+    print('AvgCumulativeReward', np.sum(TotalCumulativeReward)/eval_round)
     print('SuccessfulRate', SuccessfulEpisode / eval_round)
     print()
     # PLOT
