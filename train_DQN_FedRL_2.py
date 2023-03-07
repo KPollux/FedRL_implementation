@@ -40,7 +40,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --------------------------- # PARAMETERS # -------------------------- #
 # M_EPISODE = 10
-M_EPISODE = 64
+M_EPISODE = 6400
 BATCH_SIZE = 128  # size of the batches
 BUFFER_SIZE = 10000
 LR = 1e-4  # learning rate
@@ -462,7 +462,7 @@ if __name__ == '__main__':
 
     TotalCumulativeReward = []
     SuccessfulEpisode = 0
-    eval_round = 8
+    eval_round = 800
 
     for i_eval in range(eval_round):
         state = env.reset()
