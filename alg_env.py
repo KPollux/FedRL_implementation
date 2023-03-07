@@ -145,8 +145,10 @@ class FedRLEnv:
         # print(t_actions)
         # t_actions = t_actions.unsqueeze(0)
         # for t_action in t_actions:
-        t_action = t_actions[0]
+
+        t_action = t_actions.squeeze(0)
         actions = {'alpha': t_action[0].detach().item(), 'beta': t_action[1].detach().item()}
+
         # ACTION: 0,1,2,3,4 = stay ! ,  east > , south v , west < , north ^
         # ori no stay
         # ACTION: 0,1,2,3 = east > , south v , west < , north ^

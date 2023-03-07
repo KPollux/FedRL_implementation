@@ -1,4 +1,11 @@
+import math
+import random
+from collections import deque
+
+import numpy as np
 import torch
+from termcolor import colored
+from torch import nn
 
 from alg_GLOBALS import *
 from alg_plotter import ALGPlotter
@@ -22,8 +29,8 @@ def train():
 
             # PREPARATION
             epsilon = EPSILON_MAX - global_steps / (M_EPISODE * MAX_STEPS) * (EPSILON_MAX - EPSILON_MIN)
-            t_alpha_obs = t_observations['alpha']
-            t_beta_obs = t_observations['beta']
+            t_alpha_obs = t_observations['alpha'].view(1, -1)
+            t_beta_obs = t_observations['beta'].view(1, -1)
 
             # COMPUTE C_BETA, 通过Q_beta(), 得到C_beta, beta_buffer存储动作
             C_beta, t_beta_action = beta_compute_q_beta(t_beta_obs, epsilon)
@@ -35,7 +42,7 @@ def train():
                 # 根据观测，计算alpha的Q值
                 t_alpha_action_q_values = Q_alpha(t_alpha_obs)  # [ 0.1180, -0.2444, -0.0916, -0.0159, -0.0853]
                 q_f_alpha_values_list = []
-                for t_action_q_value in t_alpha_action_q_values:
+                for t_action_q_value in t_alpha_action_q_values.squeeze():
                     # 堆叠alpha的Q值和C_beta
                     input_q_f = torch.stack((t_action_q_value, C_beta))
                     # 输入Q_f_alpha
@@ -158,6 +165,9 @@ def alpha_update_q(y_j, t_sample_alpha_obs, t_sample_alpha_action, C_beta):
     input_q_f = torch.stack((C_alpha, C_beta))
     q_f_alpha = Q_f_alpha(input_q_f).squeeze().float()
     y_j = y_j.detach().float()
+    print(C_alpha.shape, input_q_f.shape, q_f_alpha.shape, y_j.shape)
+    exit()
+
     alpha_loss = nn.MSELoss()(q_f_alpha, y_j)
     Q_alpha_optim.zero_grad()
     alpha_loss.backward()
@@ -219,7 +229,7 @@ if __name__ == '__main__':
     SAVE_RESULTS = True
     SAVE_PATH = f'data/models_{ENV_NAME}.pt'
     plotter = ALGPlotter(plot_life=PLOT_LIVE, plot_neptune=NEPTUNE, name='my_run_FedRL', tags=[ENV_NAME], plot_per=100)
-    plotter.neptune_init()
+    # plotter.neptune_init()
 
     # --------------------------- # PLOTTER INIT # -------------------------- #
 
