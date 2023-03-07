@@ -479,7 +479,7 @@ if __name__ == '__main__':
             state = state.cuda()
 
             # observation = observation['alpha'].reshape((1, -1))
-            CumulativeReward += float(reward['alpha'].cpu().numpy()[0])
+            CumulativeReward += float(reward['alpha'].cpu().numpy())
             if done:
                 reward = float(reward['alpha'])
                 TotalCumulativeReward.append(reward)

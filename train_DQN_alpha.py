@@ -26,7 +26,7 @@ from alg_plotter import ALGPlotter
 from alg_env import FedRLEnv
 from alg_nets import CriticNet, ActorNet
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
 # set up matplotlib
 is_ipython = 'inline' in matplotlib.get_backend()
@@ -371,7 +371,8 @@ if __name__ == '__main__':
             state = state.cuda()
 
             # observation = observation['alpha'].reshape((1, -1))
-            CumulativeReward += float(reward['alpha'].cpu().numpy()[0])
+            # print(reward['alpha'])
+            CumulativeReward += float(reward['alpha'].cpu().numpy())
             if done:
                 reward = CumulativeReward
                 TotalCumulativeReward.append(reward)
