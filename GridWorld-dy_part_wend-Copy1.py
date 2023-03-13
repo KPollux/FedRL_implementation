@@ -15,7 +15,7 @@ import pickle
 
 import copy
 import matplotlib.pyplot as plt
-get_ipython().run_line_magic('matplotlib', 'inline')
+# get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # ![image.png](attachment:153e8ada-51b8-4d9c-aa0c-614a6b3089f3.png)
@@ -883,9 +883,9 @@ maze_set = np.array(maze_set)*1.0
 rat_set = np.array(rat_set)
 target_set = np.array(target_set)
 
-for i_episode in range(1):
+for i_episode in range(6400):
     # 读取训练数据
-    maze, rat, target = maze_set[0], rat_set[0], target_set[0]
+    maze, rat, target = maze_set[i_episode], rat_set[i_episode], target_set[i_episode]
     
     # 初始化环境
     env = Qmaze(maze, rat, target)
@@ -934,7 +934,7 @@ for i_episode in range(1):
     
     # win_rate = evaluation()
     # print(win_rate)
-    plot_rewards(episode_rewards) #, title = 'Training... WinRate='+str(win_rate))
+    # plot_rewards(episode_rewards) #, title = 'Training... WinRate='+str(win_rate))
     # if win_rate == 1:
     #     print('win_rate 100%!')
     #     break
@@ -1011,7 +1011,7 @@ print(env.total_reward)
 # In[107]:
 
 
-get_ipython().system('jupyter nbconvert --to python GridWorld-dy_part_wend-Copy1.ipynb')
+# get_ipython().system('jupyter nbconvert --to python GridWorld-dy_part_wend-Copy1.ipynb')
 
 
 # In[ ]:
