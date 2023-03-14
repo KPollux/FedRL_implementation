@@ -15,7 +15,7 @@ import pickle
 
 import copy
 import matplotlib.pyplot as plt
-# get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # ![image.png](attachment:153e8ada-51b8-4d9c-aa0c-614a6b3089f3.png)
@@ -31,11 +31,11 @@ import matplotlib.pyplot as plt
 # - 已经访问过的单元格，-0.25 分
 # - 总奖励低于负阈值：(-0.5 * maze.size)，lose
 
-# In[2]:
+# In[338]:
 
 
 visited_mark = 0.8  # Cells visited by the rat will be painted by gray 0.8
-end_mark = 0.7
+end_mark = 1.5
 rat_mark = 0.5      # The current rat cell will be painteg by gray 0.5
 LEFT = 0
 UP = 1
@@ -56,13 +56,13 @@ num_actions = len(actions_dict)
 epsilon = 0.1
 
 
-# In[3]:
+# In[339]:
 
 
 random.randint(0, 1)
 
 
-# In[4]:
+# In[340]:
 
 
 # import random
@@ -137,7 +137,7 @@ random.randint(0, 1)
 #     pickle.dump(train_set, f)
 
 
-# In[5]:
+# In[341]:
 
 
 # 从文件中加载字典
@@ -148,7 +148,7 @@ with open("gridworld3x3_test_dict.pickle", "rb") as f:
     test_dict = pickle.load(f)
 
 
-# In[6]:
+# In[342]:
 
 
 len(test_dict['gridworld'])
@@ -156,19 +156,19 @@ len(test_dict['gridworld'])
 
 # ## Q-maze
 
-# In[7]:
+# In[343]:
 
 
 50/(1.5)
 
 
-# In[8]:
+# In[344]:
 
 
 1/(abs(1-0) + abs(1-0))
 
 
-# In[9]:
+# In[345]:
 
 
 # maze is a 2d Numpy array of floats between 0.0 to 1.0
@@ -222,7 +222,7 @@ class Qmaze(object):
         self.min_reward = -0.5 * self.maze.size
         # 初始化总奖励
         self.total_reward = 0
-        self.visited = set()
+        self.visited = list()
         self.total_Tstep = 0
         
         return self.observe(), self.game_status()
@@ -236,7 +236,7 @@ class Qmaze(object):
         
         # 如果老鼠访问的是空格，则记录
         if self.maze[rat_row, rat_col] > 0.0:
-            self.visited.add((rat_row, rat_col))  # mark visited cell
+            self.visited.append((rat_row, rat_col))  # mark visited cell
 
         # 获取所有可能执行的动作
         valid_actions = self.valid_actions()
@@ -274,18 +274,18 @@ class Qmaze(object):
         rg = 0
         # print('rat_row, rat_col, self.target', rat_row, rat_col, self.target)
         if rat_row== self.target[0] and rat_col == self.target[1]:
-            rl = 50  # 奶酪，给予 1.0 分
+            rl = 1  # 奶酪，给予 1.0 分
         elif mode == 'blocked':
             rl = self.min_reward - 1
         elif mode == 'invalid':
-            rl = -10  # 撞墙-0.75 分，动作不会被执行
-        # elif (rat_row, rat_col) in self.visited:
-        #     rl = -0.25  # 访问已经访问过的单元格，-0.25 分
+            rl = -0.75  # 撞墙-0.75 分，动作不会被执行
+        elif (rat_row, rat_col) in self.visited:
+            rl = -0.25  # 访问已经访问过的单元格，-0.25 分
         elif mode == 'valid':
-            rl = -1  # 每次移动都会花费老鼠 -0.04 分
+            rl = -0.04  # 每次移动都会花费老鼠 -0.04 分
         
-        if rl!= 50:
-            rg = 8/(abs(self.state[0]-self.target[0]) + abs(self.state[1]-self.target[1]))
+        if rl!= 1:
+            rg = 0.04/(abs(self.state[0]-self.target[0]) + abs(self.state[1]-self.target[1]))
         # print(rl, rg)
         
         reward = rl + rg
@@ -424,7 +424,7 @@ class Qmaze(object):
         return result
 
 
-# In[10]:
+# In[346]:
 
 
 def show(qmaze):
@@ -446,13 +446,13 @@ def show(qmaze):
     return img
 
 
-# In[11]:
+# In[347]:
 
 
 maze, rat, target = train_dict['gridworld'][0], train_dict['start'][0], train_dict['end'][0]
 
 
-# In[12]:
+# In[348]:
 
 
 # maze = [
@@ -479,7 +479,7 @@ maze, rat, target = train_dict['gridworld'][0], train_dict['start'][0], train_di
 maze = np.array(maze)*1.0
 
 
-# In[138]:
+# In[349]:
 
 
 qmaze = Qmaze(maze, rat, target)
@@ -488,19 +488,19 @@ qmaze = Qmaze(maze, rat, target)
 show(qmaze)
 
 
-# In[139]:
+# In[350]:
 
 
 qmaze.draw_env()
 
 
-# In[140]:
+# In[351]:
 
 
 qmaze.observe()
 
 
-# In[141]:
+# In[352]:
 
 
 canvas, reward, game_over = qmaze.act(UP)  # move right
@@ -524,27 +524,33 @@ print(qmaze.total_reward, reward, game_over)
 show(qmaze)
 
 
-# In[143]:
+# In[353]:
 
 
 qmaze.state
 
 
-# In[144]:
+# In[354]:
 
 
 qmaze.target
 
 
-# In[142]:
+# In[355]:
 
 
 qmaze.is_game_done()
 
 
+# In[356]:
+
+
+qmaze.visited
+
+
 # ## DQN
 
-# In[17]:
+# In[357]:
 
 
 import torch
@@ -570,7 +576,7 @@ class DQN(nn.Module):
         return x
 
 
-# In[18]:
+# In[358]:
 
 
 from collections import namedtuple, deque
@@ -615,7 +621,7 @@ def plot_rewards(episode_rewards, show_result=False, title='Training...'):
     # Take 100 episode averages and plot them too
     if len(rewards_t) >= 100:
         means = rewards_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
+        means = torch.cat((torch.zeros(99)-28.5, means))
         plt.plot(means.numpy())
 
     plt.pause(0.001)  # pause a bit so that plots are updated
@@ -627,7 +633,7 @@ def plot_rewards(episode_rewards, show_result=False, title='Training...'):
             display.display(plt.gcf())
 
 
-# In[112]:
+# In[359]:
 
 
 # 动作选取
@@ -655,7 +661,7 @@ def select_action(state):
         return torch.tensor([[random.choice(env.valid_actions())]], device=device, dtype=torch.long)
 
 
-# In[131]:
+# In[360]:
 
 
 def optimize_model():
@@ -720,7 +726,7 @@ def optimize_model():
 # optimize_model()
 
 
-# In[21]:
+# In[361]:
 
 
 # if gpu is to be used
@@ -728,7 +734,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = 'cpu'
 
 
-# In[22]:
+# In[362]:
 
 
 # ss = []
@@ -751,22 +757,25 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # print(exploit, exploit/1000)
 
 
-# In[23]:
+# In[363]:
 
 
 len(train_dict['gridworld'])
 
 
-# In[113]:
+# In[439]:
 
 
 from tqdm import trange
 
-def evaluation():
+def evaluation(test_dict):
     win = 0
     episode_rewards = []
-    for r in trange(800):
-        maze, rat, target = test_dict['gridworld'][r], test_dict['start'][r], test_dict['end'][r]
+    
+    num_r = len(test_dict['start'])
+    
+    for j in trange(800):
+        maze, rat, target = test_dict['gridworld'][j], test_dict['start'][j], test_dict['end'][j]
         maze = np.array(maze)*1.0
     
         env = Qmaze(maze, rat, target)
@@ -801,25 +810,31 @@ def evaluation():
     
     
     win_rate = win / 800
+    
+    show(env)
+    print(env.visited)
+    print(env.state)
+    print(env.total_reward)
+    
     return episode_rewards, win_rate
 
 # win_rate = evaluation(10)
 # print(win_rate)
 
 
-# In[25]:
+# In[365]:
 
 
 # i_episode=0
 
 
-# In[26]:
+# In[366]:
 
 
 # maze_set, rat_set, target_set = train_dict['gridworld'], train_dict['start'], train_dict['end']
 
 
-# In[27]:
+# In[367]:
 
 
 # maze_set = torch.Tensor(maze_set)
@@ -827,7 +842,7 @@ def evaluation():
 # target_set = np.array(target_set)
 
 
-# In[103]:
+# In[368]:
 
 
 ENV_NAME = 'grid'
@@ -838,7 +853,7 @@ os.makedirs(f'runs/{ENV_NAME}/', exist_ok=True)
 os.makedirs(folder_name, exist_ok=True)
 
 
-# In[130]:
+# In[412]:
 
 
 # BATCH_SIZE是指从重放缓冲区采样的转换数
@@ -883,15 +898,16 @@ maze_set = np.array(maze_set)*1.0
 rat_set = np.array(rat_set)
 target_set = np.array(target_set)
 
-for i_episode in range(6400):
-    # 读取训练数据
-    maze, rat, target = maze_set[i_episode], rat_set[i_episode], target_set[i_episode]
-    
-    # 初始化环境
-    env = Qmaze(maze, rat, target)
-    
-    # 每张图训练10次
-    for j in range(10):
+
+for j in range(3):
+    for i_episode in trange(6400):
+        # 每张图训练10次
+        # 读取训练数据
+        maze, rat, target = maze_set[i_episode], rat_set[i_episode], target_set[i_episode]
+
+        # 初始化环境
+        env = Qmaze(maze, rat, target)
+        
         # Initialize the environment and get it's state
         state, info = env.reset()
         # Cart Position, Cart Velocity, Pole Angle, Pole Angular Velocity
@@ -931,31 +947,41 @@ for i_episode in range(6400):
 
 
         episode_rewards.append(env.total_reward)
-    
-    # win_rate = evaluation()
-    # print(win_rate)
-    # plot_rewards(episode_rewards) #, title = 'Training... WinRate='+str(win_rate))
-    # if win_rate == 1:
-    #     print('win_rate 100%!')
-    #     break
+
+        # win_rate = evaluation()
+        # print(win_rate)
+        # plot_rewards(episode_rewards) #, title = 'Training... WinRate='+str(win_rate))
+        
+        # if win_rate == 1:
+        #     print('win_rate 100%!')
+        #     break
 
 
-# In[126]:
+# In[434]:
 
 
-plot_rewards(episode_rewards, True)
+# plot_rewards(episode_rewards, True)
 
 
-# In[114]:
+# In[435]:
 
 
-episode_rewards_eval, win_rate = evaluation()
+# show(env)
+print(env.visited)
+print(env.state)
+print(env.total_reward)
 
 
-# In[115]:
+# In[443]:
 
 
-print(np.mean(episode_rewards_eval), win_rate)
+episode_rewards_eval, win_rate = evaluation(test_dict)
+
+
+# In[444]:
+
+
+# print(np.mean(episode_rewards_eval), win_rate)
 
 
 # In[98]:
@@ -986,15 +1012,6 @@ with open(folder_name+"/history.pickle", "wb") as f:
 torch.save(policy_net.state_dict(), folder_name+'/model.pt')
 
 
-# In[136]:
-
-
-show(env)
-print(env.visited)
-print(env.state)
-print(env.total_reward)
-
-
 # In[ ]:
 
 
@@ -1008,7 +1025,7 @@ print(env.total_reward)
 # show(env)
 
 
-# In[107]:
+# In[145]:
 
 
 # get_ipython().system('jupyter nbconvert --to python GridWorld-dy_part_wend-Copy1.ipynb')
