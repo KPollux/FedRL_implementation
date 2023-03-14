@@ -15,7 +15,7 @@ import pickle
 
 import copy
 import matplotlib.pyplot as plt
-get_ipython().run_line_magic('matplotlib', 'inline')
+# get_ipython().run_line_magic('matplotlib', 'inline')
 
 
 # ![image.png](attachment:153e8ada-51b8-4d9c-aa0c-614a6b3089f3.png)
