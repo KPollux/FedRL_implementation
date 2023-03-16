@@ -259,10 +259,10 @@ class Qmaze(object):
             rl = 1  # 奶酪，给予 1.0 分
         elif mode == 'blocked':
             rl = self.min_reward - 1
-        elif (rat_row, rat_col) in self.visited:
-            rl = -0.25  # 访问已经访问过的单元格，-0.25 分
         elif mode == 'invalid':
             rl = -0.75  # 撞墙-0.75 分，动作不会被执行
+        elif (rat_row, rat_col) in self.visited:
+            rl = -0.25  # 访问已经访问过的单元格，-0.25 分
         elif mode == 'valid':
             rl = -0.04  # 每次移动都会花费老鼠 -0.04 分
         
@@ -437,7 +437,7 @@ optimal_path = find_path(maze, (0, 0), (maze_size-1, maze_size-1))
 qmaze.visited = optimal_path
 optimal_length = len(optimal_path)
 
-show(qmaze)
+# show(qmaze)
 print('optimal path length is:', optimal_length)
 
 
@@ -447,7 +447,7 @@ print('optimal path length is:', optimal_length)
 qmaze = Qmaze(maze)
 canvas, reward, game_over = qmaze.act(DOWN)
 print("reward=", reward)
-show(qmaze)
+# show(qmaze)
 
 
 # In[11]:
@@ -462,7 +462,7 @@ canvas
 qmaze.act(RIGHT)  # move right
 qmaze.act(RIGHT)  # move right
 qmaze.act(UP)  # move up
-show(qmaze)
+# show(qmaze)
 
 
 # ## DQN
@@ -505,9 +505,9 @@ from collections import namedtuple, deque
 import matplotlib
 import matplotlib.pyplot as plt
 # set up matplotliba
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
+# is_ipython = 'inline' in matplotlib.get_backend()
+# if is_ipython:
+#     from IPython import display
     
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
@@ -731,7 +731,7 @@ def evaluation():
     
     win_rate = win / 1
     
-    show(env)
+    # show(env)
     # print(env.visited)
     # print(env.state)
     # print(env.total_reward)
