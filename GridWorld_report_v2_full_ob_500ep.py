@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 def find_path(maze, start, end):
     """
@@ -44,7 +44,7 @@ def find_path(maze, start, end):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 maze_names = ['maze16_1', 'maze16_2', 'maze16_3', 'maze16_4', 'maze16_5']
 
-ENV_NAME = 'grid_partob_largeDQN'
+ENV_NAME = 'grid_fullob'
 
 for maze_name in maze_names:
     
@@ -202,8 +202,8 @@ for maze_name in maze_names:
             return observation, reward, done, info
 
         def observe(self):
-            # canvas = self.draw_env()
-            canvas = self.get_observation()
+            canvas = self.draw_env()
+            # canvas = self.get_observation()
             envstate = canvas.reshape((1, -1))
             return envstate
 
@@ -277,29 +277,29 @@ for maze_name in maze_names:
             # 返回所有可能执行的动作
             return actions
 
-        def get_observation(self, size=3):
-            maze = self.draw_env()
-            row, col, _ = self.state
-            # 获取maze的行列数
-            ROWS = len(maze)
-            COLS = len(maze[0])
+#         def get_observation(self, size=3):
+#             maze = self.draw_env()
+#             row, col, _ = self.state
+#             # 获取maze的行列数
+#             ROWS = len(maze)
+#             COLS = len(maze[0])
 
-            # 初始化结果二维数组
-            result = [[0 for _ in range(size)] for _ in range(size)]
+#             # 初始化结果二维数组
+#             result = [[0 for _ in range(size)] for _ in range(size)]
 
-            # 将以指定点为中心指定尺寸范围的观测值存入结果二维数组
-            for i in range(row-size//2, row+size//2+1):
-                for j in range(col-size//2, col+size//2+1):
-                    if i < 0 or i >= ROWS or j < 0 or j >= COLS:
-                        # 如果超出边界，则填充为1
-                        result[i-row+size//2][j-col+size//2] = 0.0
-                    else:
-                        result[i-row+size//2][j-col+size//2] = maze[i][j]
+#             # 将以指定点为中心指定尺寸范围的观测值存入结果二维数组
+#             for i in range(row-size//2, row+size//2+1):
+#                 for j in range(col-size//2, col+size//2+1):
+#                     if i < 0 or i >= ROWS or j < 0 or j >= COLS:
+#                         # 如果超出边界，则填充为1
+#                         result[i-row+size//2][j-col+size//2] = 0.0
+#                     else:
+#                         result[i-row+size//2][j-col+size//2] = maze[i][j]
 
-            # 返回结果二维数组
-            result = np.array(result)
-            result[size//2][size//2] = 0.5
-            return result
+#             # 返回结果二维数组
+#             result = np.array(result)
+#             result[size//2][size//2] = 0.5
+#             return result
 
     qmaze = Qmaze(maze)
     maze_size = maze.shape[0]
@@ -318,10 +318,6 @@ for maze_name in maze_names:
             self.relu1 = nn.ReLU()
             self.layer2 = nn.Linear(maze_size*maze_size*2, maze_size*maze_size*2)
             self.relu2 = nn.ReLU()
-            self.layer3 = nn.Linear(maze_size*maze_size*2, maze_size*maze_size*2)
-            self.relu3 = nn.ReLU()
-            self.layer4 = nn.Linear(maze_size*maze_size*2, maze_size*maze_size*2)
-            self.relu4 = nn.ReLU()
             self.output_layer = nn.Linear(maze_size*maze_size*2, num_actions)
 
         def forward(self, x):
@@ -329,10 +325,6 @@ for maze_name in maze_names:
             x = self.relu1(x)
             x = self.layer2(x)
             x = self.relu2(x)
-            x = self.layer3(x)
-            x = self.relu3(x)
-            x = self.layer4(x)
-            x = self.relu4(x)
             x = self.output_layer(x)
             return x
 
@@ -591,7 +583,7 @@ for maze_name in maze_names:
     
 
     now = time.strftime("%m-%d_%H-%M-%S", time.localtime())
-    folder_name = f"runs/{ENV_NAME}/" + now
+    folder_name = f"runs/{ENV_NAME}/" + now + maze_name
     os.makedirs('runs/', exist_ok=True)
     os.makedirs(f'runs/{ENV_NAME}/', exist_ok=True)
     os.makedirs(folder_name, exist_ok=True)
