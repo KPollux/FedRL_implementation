@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 def find_path(maze, start, end):
     """
