@@ -42,7 +42,7 @@ def find_path(maze, start, end):
     return False
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-maze_names = ['maze8n_1', 'maze8n_2', 'maze8n_3', 'maze8n_4', 'maze8n_5']
+maze_names = ['maze16_1', 'maze16_2', 'maze16_3', 'maze16_4', 'maze16_5']
 
 ENV_NAME = 'grid_fullob_largeDQN'
 
