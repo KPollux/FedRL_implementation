@@ -1,6 +1,7 @@
 import os
 import random
 import time
+from itertools import count
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -15,7 +16,6 @@ from tqdm import trange
 
 from games.GridWorld.GridWorldMeet import FedRLEnv
 from games.GridWorld.setting import cfg_data
-
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 device = "cuda:0"
@@ -87,6 +87,7 @@ class ReplayMemory(object):
 
 class Agent:
     def __init__(self, agent_id, observation_size, cfg_):
+        observation_size = observation_size ** 2
         self.observation_size = observation_size
         self.cfg = cfg_
 
@@ -97,7 +98,7 @@ class Agent:
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.cfg.LR)
         self.agent_id = agent_id
 
-        self.memory = ReplayMemory(int(maze.size * 0.5 / 0.04) * 2)
+        self.memory = ReplayMemory(10000)
 
         self.episode_rewards = []
         self.episode_step = []
@@ -109,22 +110,28 @@ class Agent:
         sample = random.random()
 
         # 随着进行，eps_threshold逐渐降低
-        # eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        #     math.exp(-1. * steps_done / EPS_DECAY)
+        eps_threshold = self.cfg.EPS_END + (self.cfg.EPS_START - self.cfg.EPS_END) * \
+            math.exp(-1. * self.steps_done / self.cfg.EPS_DECAY)
+
+        # eps_threshold = self.cfg.eps_threshold
 
         self.steps_done += 1
 
         # 常规情况选择价值最高的动作
-        if sample > self.cfg.eps_threshold:
+        if sample > eps_threshold:
+            # print('利用')
             with torch.no_grad():
                 # t.max(1) will return the largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
-                state = torch.tensor(state, dtype=torch.float32, device=device)
+                # print(state)
+                # state = torch.tensor(state, dtype=torch.float32, device=device).reshape((1, -1))
+                # print(state)
                 return self.policy_net(state).max(1)[1].view(1, 1)
 
         # 当随机值超过阈值时，随机选取 - exploration
         else:
+            # print('随机')
             # 探索时只探索可能的动作，增加探索效率？
             return torch.tensor([[random.choice(env.valid_actions(self.agent_id))]], device=device,
                                 dtype=torch.long)
@@ -188,78 +195,113 @@ class Agent:
         torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
         self.optimizer.step()
 
+    # soft_sync_target_net
+    def soft_sync_target_net(self):
+        # self.target_net.load_state_dict(self.policy_net.state_dict())
+        # Soft update of the target network's weights
+        # θ′ ← τ θ + (1 −τ )θ′
+        target_net_state_dict = self.target_net.state_dict()
+        policy_net_state_dict = self.policy_net.state_dict()
+
+        # if (steps_done % sync_target_net_freq) == 0:
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key] * self.cfg.TAU \
+                                         + target_net_state_dict[key] * (1 - self.cfg.TAU)
+
+        self.target_net.load_state_dict(target_net_state_dict)
 
 from tqdm import trange
 
 
 def evaluation():
     win = 0
-    episode_rewards_eval = []
-
-    env = FedRLEnv(maze, cfg_data)
+    # episode_rewards_eval = []
+    episode_rewards_alpha_eval = []
+    episode_rewards_beta_eval = []
+    episode_step_eval = []
 
     for j in range(1):
-
         # Initialize the environment and get it's state
-        state, info = env.reset()
-        # Cart Position, Cart Velocity, Pole Angle, Pole Angular Velocity
-        state = torch.tensor(state, dtype=torch.float32, device=device)
+        state, info = env_eval.reset()
 
         done = False
         while not done:
-            action = policy_net(state).max(1)[1].view(1, 1)  # 选择一个动作
+            # 环境观察到的两个状态分别分配给两个agent
+            state_alpha = torch.tensor(state['alpha'], dtype=torch.float32, device=device).reshape((1, -1))
+            state_beta = torch.tensor(state['beta'], dtype=torch.float32, device=device).reshape((1, -1))
+
+            with torch.no_grad():
+                action_alpha = Agent_alpha.policy_net(state_alpha).max(1)[1].view(1, 1)  # 选择一个动作
+                action_beta = Agent_beta.policy_net(state_beta).max(1)[1].view(1, 1)  # 选择一个动作
+
+            t_actions = {'alpha': action_alpha.item(), 'beta': action_beta.item()}
+
             # random.choice(env.valid_actions())
-            observation, reward, done, info = env.step(action.item())  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
-            # reward = torch.tensor([reward], device=device)
-            # print(int(action[0][0]))
-            # print(observation, reward, done, info)
-            # print()
-            if done:
-                next_state = None
-            else:
-                next_state = torch.tensor(observation, dtype=torch.float32, device=device)  # 如果没有终止则继续记录下一个状态
+            t_observations, t_rewards, done, info = env_eval.step(t_actions)  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
+            # observation_alpha = torch.tensor(t_observations['alpha'], dtype=torch.float32, device=device).reshape((1, -1))
+            # observation_beta = torch.tensor(t_observations['beta'], dtype=torch.float32, device=device).reshape((1, -1))
+            #
+            # if done:
+            #     next_state_alpha = next_state_beta = None
+            # else:  # 如果没有终止则继续记录下一个状态
+            #     next_state_alpha = observation_alpha
+            #     next_state_beta = observation_beta
 
-            # Store the transition in memory
-            # memory.push(state, action, next_state, reward)
+            state = t_observations
+            # # Store the transition in memory
+            # # memory.push(state, action, next_state, reward)
+            #
+            # # Move to the next state
+            # state = t_observations
 
-            # Move to the next state
-            state = next_state
-
-        episode_rewards_eval.append(env.total_reward)
+        episode_rewards_alpha_eval.append(env_eval.agent_dict.alpha.total_reward)
+        episode_rewards_beta_eval.append(env_eval.agent_dict.beta.total_reward)
+        episode_step_eval.append(env_eval.total_Tstep)
         if info == 'win':
             win += 1
 
     win_rate = win / 1
 
-    env.render()
+    # env.render()
     # print(env.visited)
     # print(env.state)
     # print(env.total_reward)
 
-    return episode_rewards_eval, win_rate
+    return [episode_rewards_alpha_eval, episode_rewards_beta_eval, episode_step_eval], win_rate
+
 
 # %%
 
-# if __name__ == '__main__':
-    # cfg = edict()
-    # cfg.num_actions = 4
-    # cfg.maze_size = 8
-    # cfg.BATCH_SIZE = 32
-    # cfg.GAMMA = 0.99
-    # cfg.EPS_START = 0.9
-    # cfg.EPS_END = 0.05
-    # cfg.EPS_DECAY = 1000
-    # cfg.eps_threshold = 0.1
-    # cfg.TAU = 0.005
-    # cfg.LR = 1e-3
-    # cfg.num_episodes = 10000
+if __name__ == '__main__':
+    # %%
+    cfg = edict()
+    cfg.num_actions = 4
+    cfg.maze_size = 8
+    cfg.BATCH_SIZE = 128
+    cfg.GAMMA = 0.99
+    cfg.EPS_START = 0.9
+    cfg.EPS_END = 0.05
+    cfg.EPS_DECAY = 1000
+    cfg.eps_threshold = 0.1
+    cfg.TAU = 0.005
+    cfg.LR = 1e-4
+    cfg.num_episodes = 500
+
+    # maze = np.loadtxt('maze8n_2.txt')
+    maze = np.loadtxt('games/GridWorld/maze8_0.1_5.txt')
     #
-    # maze = np.loadtxt('maze8n_5.txt')
+    env = FedRLEnv(maze, cfg_data)
+
+    env_eval = FedRLEnv(maze, cfg_data)
+    env_eval.max_Tstep = 38
+
+    # [0, 1, 2, 3] [L, U, R, D]
+
+
+# %%
+    # print(env.reset())
     #
-env = FedRLEnv(maze, cfg_data)
-print(env.reset())
-    #
-    # ENV_NAME = 'grid'
+    ENV_NAME = 'grid-double-agent'
     # now = time.strftime("%m-%d_%H-%M-%S", time.localtime())
     # folder_name = f"runs/{ENV_NAME}/" + now
     # os.makedirs('runs/', exist_ok=True)
@@ -269,53 +311,196 @@ print(env.reset())
     # # tensorboard
     # writer = SummaryWriter(folder_name)
 
-# [0, 1, 2, 3] [L, U, R, D]
+    Agent_alpha = Agent('alpha', 3, cfg)
+    Agent_beta = Agent('beta', 5, cfg)
 
-env.render()
+    episode_rewards_alpha = []
+    episode_rewards_beta = []
+    episode_step = []
 
-t_actions = {'alpha': 2, 'beta': 0}
+    for i_episode in range(cfg.num_episodes):
+        # Initialize the environment and get it's state
+        state, info = env.reset()
 
-t_observations, t_rewards, done, info = env.step(t_actions)
+        # 环境观察到的两个状态分别分配给两个agent
+        # state = torch.tensor(state, dtype=torch.float32, device=device).reshape((1, -1))
+        state_alpha = torch.tensor(state['alpha'], dtype=torch.float32, device=device).reshape((1, -1))
+        state_beta = torch.tensor(state['beta'], dtype=torch.float32, device=device).reshape((1, -1))
 
-print(t_observations, t_rewards, done, info)
+        done = False
+        for t in count():
+            action_alpha = Agent_alpha.select_action(state_alpha)  # 选择一个动作
+            action_beta = Agent_beta.select_action(state_beta)  # 选择一个动作
 
-env.render()
+            # print(action_alpha, action_beta)
+            t_actions = {'alpha': action_alpha.item(), 'beta': action_beta.item()}
+            # print(t_actions)
+            # random.choice(env.valid_actions())
+            t_observations, t_rewards, done, info = env.step(t_actions)  # 执行动作，返回{下一个观察值、奖励、是否结束、是否提前终止}
+            # print(t_observations, t_rewards, done, _)
+            # break
+            reward_alpha = torch.tensor([t_rewards['alpha']], device=device)
+            reward_beta = torch.tensor([t_rewards['beta']], device=device)
 
-# %%
-t_actions = {'alpha': 2, 'beta': 0}
-print(env.step(t_actions))
-env.render()
-# %%
-t_actions = {'alpha': 3, 'beta': 1}
-print(env.step(t_actions))
-env.render()
-# %%
-t_actions = {'alpha': 2, 'beta': 1}
-print(env.step(t_actions))
-env.render()
+            observation_alpha = torch.tensor(t_observations['alpha'], dtype=torch.float32, device=device).reshape((1, -1))
+            observation_beta = torch.tensor(t_observations['beta'], dtype=torch.float32, device=device).reshape((1, -1))
 
+            if done:
+                next_state_alpha = next_state_beta = None
+            else:  # 如果没有终止则继续记录下一个状态
+                next_state_alpha = observation_alpha
+                next_state_beta = observation_beta
 
-# t_alpha_action = 0
-# t_beta_action = 3
-#
-# t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
+            # print(reward_alpha, reward_beta)
+            # print(observation_alpha, observation_beta)
+            # print(next_state_alpha, next_state_beta)
 
-# EXECUTE ACTION
-# t_new_observations, t_rewards, done, infos = env.step(t_actions)
-#
-# print(t_new_observations)
-# print(t_rewards)
-
-
-
-# map = env.render()
-
-# plt.imshow(map)
-# plt.show()
-
-# print(env.agents[0].x)
+            # break
+            # Store the transition in memory
+            Agent_alpha.memory.push(state_alpha, action_alpha, next_state_alpha, reward_alpha)
+            Agent_beta.memory.push(state_beta, action_beta, next_state_beta, reward_beta)
 
 
-# print(map)
+            # Move to the next state
+            state = t_observations  # state = next_state
 
-NUMBER_OF_GAMES = 10
+            # Perform one step of the optimization (on the policy network)
+            Agent_alpha.train()
+            Agent_beta.train()
+
+            # Soft update of the target network's weights
+            Agent_alpha.soft_sync_target_net()
+            Agent_beta.soft_sync_target_net()
+
+            if done:
+                break
+
+        Agent_alpha.episode_rewards.append(env.agent_dict.alpha.total_reward)
+        Agent_beta.episode_rewards.append(env.agent_dict.beta.total_reward)
+
+        Agent_alpha.episode_step.append(env.total_Tstep)
+        Agent_beta.episode_step.append(env.total_Tstep)
+
+        _, win_eval = evaluation()
+
+        print('Episode {}\tLast num step: {:.2f}\tLast reward Alpha: {:.2f}\t'
+              'Last reward Beta: {:.2f}\tInfo: {}\tEval: {}'
+              .format(i_episode, env.total_Tstep, env.agent_dict.alpha.total_reward,
+                      env.agent_dict.beta.total_reward, info, win_eval))
+
+        # print('')
+        # if i_episode % 20 == 0:
+    plt.title('alpha episode_rewards')
+    plt.xlabel('episode')
+    plt.ylabel('episode_rewards')
+    plt.plot(Agent_alpha.episode_rewards)
+    plt.show()
+
+    plt.title('alpha episode_step')
+    plt.xlabel('episode')
+    plt.ylabel('episode_step')
+    plt.plot(Agent_alpha.episode_step)
+    plt.show()
+
+    plt.title('beta episode_rewards')
+    plt.xlabel('episode')
+    plt.ylabel('episode_rewards')
+    plt.plot(Agent_beta.episode_rewards)
+    plt.show()
+
+    plt.title('beta episode_step')
+    plt.xlabel('episode')
+    plt.ylabel('episode_step')
+    plt.plot(Agent_beta.episode_step)
+    plt.show()
+
+    env.render()
+    env_eval.render()
+
+
+
+
+    # eps_threshold = []
+    # samples = []
+    # for steps_done in range(cfg.num_episodes):
+    #     eps_threshold.append(cfg.EPS_END + (cfg.EPS_START - cfg.EPS_END) * \
+    #                          math.exp(-1. * steps_done / cfg.EPS_DECAY))
+    #     samples.append(random.random())
+    # plt.plot([_ for _ in range(cfg.num_episodes)], samples)
+    # plt.plot(eps_threshold)
+    # plt.show()
+
+    # [0, 1, 2, 3] [L, U, R, D]
+    #
+    # env.render()
+    #
+    # t_actions = {'alpha': 2, 'beta': 0}
+    #
+    # t_observations, t_rewards, done, info = env.step(t_actions)
+    #
+    # print(t_observations, t_rewards, done, info)
+    #
+    # env.render()
+    #
+    # # %%
+    # t_actions = {'alpha': 2, 'beta': 0}
+    # print(env.step(t_actions))
+    # env.render()
+    # # %%
+    # t_actions = {'alpha': 3, 'beta': 1}
+    # print(env.step(t_actions))
+    # env.render()
+    # # %%
+    # t_actions = {'alpha': 2, 'beta': 1}
+    # print(env.step(t_actions))
+    # env.render()
+
+    # t_alpha_action = 0
+    # t_beta_action = 3
+    #
+    # t_actions = {'alpha': t_alpha_action, 'beta': t_beta_action}
+
+    # EXECUTE ACTION
+    # t_new_observations, t_rewards, done, infos = env.step(t_actions)
+    #
+    # print(t_new_observations)
+    # print(t_rewards)
+
+    # map = env.render()
+
+    # plt.imshow(map)
+    # plt.show()
+
+    # print(env.agents[0].x)
+
+    # print(map)
+
+    # NUMBER_OF_GAMES = 10
+
+
+    # 手操
+    # # %%
+    # env.render()
+    #
+    # t_actions = {'alpha': 2, 'beta': 0}
+    #
+    # t_observations, t_rewards, done, info = env.step(t_actions)
+    #
+    # print(t_observations, t_rewards, done, info)
+    #
+    # env.render()
+    # t_actions = {'alpha': 2, 'beta': 0}
+    # print(env.step(t_actions))
+    # env.render()
+    # # %%
+    # t_actions = {'alpha': 3, 'beta': 1}
+    # print(env.step(t_actions))
+    # env.render()
+    # # %%
+    # t_actions = {'alpha': 2, 'beta': 1}
+    # print(env.step(t_actions))
+    # env.render()
+    #
+    # # %%
+    # env.reset()
+    # env.render()

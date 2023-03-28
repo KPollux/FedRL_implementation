@@ -42,13 +42,13 @@ def find_path(maze, start, end):
     return False
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-maze_names = ['maze16_1', 'maze16_2', 'maze16_3', 'maze16_4', 'maze16_5']
+maze_names = ['maze16_0.05_1', 'maze16_0.05_2', 'maze16_0.05_3', 'maze16_0.05_4', 'maze16_0.05_5']
 
 ENV_NAME = 'grid_fullob_largeDQN'
 
 for maze_name in maze_names:
     
-    maze = np.loadtxt(maze_name+'.txt')
+    maze = np.loadtxt('games/GridWorld/'+maze_name+'.txt')
     # - 0 - 左
     # - 1 - 向上
     # - 2 - 右

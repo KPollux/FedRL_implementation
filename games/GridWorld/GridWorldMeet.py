@@ -26,6 +26,8 @@ from easydict import EasyDict as edict
 
 class Agent:
     def __init__(self, x, y, ob_size=3):  # , agent_id, agent_type, metric_radius=1):
+        self.init_x = x
+        self.init_y = y
         self.x = x
         self.y = y
         self.path = []
@@ -34,6 +36,14 @@ class Agent:
         self.path_mark = 0.6
         self.status = 'Start'
         self.total_reward = 0
+
+    def reset(self):
+        self.x = self.init_x
+        self.y = self.init_y
+        self.path = []
+        self.status = 'Start'
+        self.total_reward = 0
+
         # self.id = agent_id
 
         # self.id = agent_id
@@ -157,6 +167,9 @@ class FedRLEnv:
 
     def reset(self):
         self.maze = np.copy(self._maze)  # self.maze is the maze that will be modified during the simulation
+        for _, agent in self.agent_dict.items():
+            agent.reset()
+
         nrows, ncols = self.maze.shape
         alpha_x = self.agent_dict.alpha.x
         alpha_y = self.agent_dict.alpha.y
@@ -168,7 +181,7 @@ class FedRLEnv:
         # 初始状态
         # self.state = (row, col, 'start')
         # 设置最低奖励阈值
-        self.min_reward = 10 * self.cfg_data.REWARD.WALL  # -0.5 * self.maze.size
+        self.min_reward = 800 * self.cfg_data.REWARD.WALL  # -0.5 * self.maze.size
         # 初始化总奖励
         # self.total_reward = 0
         self.total_Tstep = 0
@@ -176,12 +189,12 @@ class FedRLEnv:
         t_observations = {name: self.get_observation(agent) for name, agent in self.agent_dict.items()}
 
         # self.visited = list()
-        for _, agent in self.agent_dict.items():
-            agent.path = []
-            agent.status = 'Start'
-            agent.total_reward = 0
+        # for _, agent in self.agent_dict.items():
+        #     agent.path = []
+        #     agent.status = 'Start'
+        #     agent.total_reward = 0
 
-        return t_observations
+        return t_observations, self.game_status()
 
     def get_observation(self, agent):
         maze = np.copy(self._maze)
@@ -283,7 +296,7 @@ class FedRLEnv:
                 agent.path.append((agent.x, agent.y))  # mark visited cell
 
             # 获取所有可能执行的动作
-            valid_actions = self.valid_actions(agent)
+            valid_actions = self.valid_actions(name)
             # print('valid_actions', valid_actions)
 
             # 如果没有可以执行的动作（被围住了），则状态为 blocked，位置不变
@@ -309,6 +322,8 @@ class FedRLEnv:
         self.total_Tstep += 1  # 每次执行动作+1
 
     def valid_actions(self, agent_name):
+        # print('agent_name', agent_name)
+        # print(self.agent_dict)
         agent = self.agent_dict[agent_name]
         # 默认验证当前位置
         row, col = agent.x, agent.y
@@ -355,6 +370,7 @@ class FedRLEnv:
         if self.cfg_data.REWARD.HEURISTIC:
             # 估计距离
             rg = self._maze.shape[0] / L1_distance
+            # rg = 1 / L1_distance
         else:
             rg = 0
 

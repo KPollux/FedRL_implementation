@@ -7,7 +7,7 @@ cfg_data = __C_GridWorld
 
 __C_GridWorld.rat = (0, 0)
 __C_GridWorld.target = (7, 7)
-__C_GridWorld.max_Tstep = 100  # 实际最大步数考察(MAX_TSTEP, reward<10*__C_GridWorld.REWARD.WALL)
+__C_GridWorld.max_Tstep = 800  # 实际最大步数考察(MAX_TSTEP, reward<10*__C_GridWorld.REWARD.WALL)
 
 __C_GridWorld.REWARD = edict()
 
