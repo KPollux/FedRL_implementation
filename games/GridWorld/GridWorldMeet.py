@@ -181,7 +181,7 @@ class FedRLEnv:
         # 初始状态
         # self.state = (row, col, 'start')
         # 设置最低奖励阈值
-        self.min_reward = 800 * self.cfg_data.REWARD.WALL  # -0.5 * self.maze.size
+        self.min_reward = 38 * self.cfg_data.REWARD.WALL  # -0.5 * self.maze.size
         # 初始化总奖励
         # self.total_reward = 0
         self.total_Tstep = 0

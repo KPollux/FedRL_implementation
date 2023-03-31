@@ -24,17 +24,24 @@ device = "cuda:0"
 class DQN(nn.Module):
     def __init__(self, observation_size, maze_size, num_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(observation_size, maze_size * maze_size * 2)
+        # factor = 2
+        # hidden_size = int(maze_size * maze_size * factor)
+        hidden_size = 32
+        self.layer1 = nn.Linear(observation_size, hidden_size)
         self.relu1 = nn.ReLU()
-        self.layer2 = nn.Linear(maze_size * maze_size * 2, maze_size * maze_size * 2)
+        self.layer2 = nn.Linear(hidden_size, hidden_size)
         self.relu2 = nn.ReLU()
-        self.output_layer = nn.Linear(maze_size * maze_size * 2, num_actions)
+        self.layer3 = nn.Linear(hidden_size, hidden_size)
+        self.relu3 = nn.ReLU()
+        self.output_layer = nn.Linear(hidden_size, num_actions)
 
     def forward(self, x):
         x = self.layer1(x)
         x = self.relu1(x)
         x = self.layer2(x)
         x = self.relu2(x)
+        x = self.layer3(x)
+        x = self.relu3(x)
         x = self.output_layer(x)
         return x
 
@@ -98,7 +105,7 @@ class Agent:
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.cfg.LR)
         self.agent_id = agent_id
 
-        self.memory = ReplayMemory(10000)
+        self.memory = ReplayMemory(1000)
 
         self.episode_rewards = []
         self.episode_step = []
@@ -277,15 +284,15 @@ if __name__ == '__main__':
     cfg = edict()
     cfg.num_actions = 4
     cfg.maze_size = 8
-    cfg.BATCH_SIZE = 128
+    cfg.BATCH_SIZE = 64
     cfg.GAMMA = 0.99
     cfg.EPS_START = 0.9
     cfg.EPS_END = 0.05
-    cfg.EPS_DECAY = 1000
+    cfg.EPS_DECAY = 2000
     cfg.eps_threshold = 0.1
     cfg.TAU = 0.005
-    cfg.LR = 1e-4
-    cfg.num_episodes = 500
+    cfg.LR = 0.001
+    cfg.num_episodes = 1000
 
     # maze = np.loadtxt('maze8n_2.txt')
     maze = np.loadtxt('games/GridWorld/maze8_0.1_5.txt')
@@ -317,6 +324,7 @@ if __name__ == '__main__':
     episode_rewards_alpha = []
     episode_rewards_beta = []
     episode_step = []
+    eval_win_rate = []
 
     for i_episode in range(cfg.num_episodes):
         # Initialize the environment and get it's state
@@ -383,6 +391,8 @@ if __name__ == '__main__':
 
         _, win_eval = evaluation()
 
+        eval_win_rate.append(win_eval)
+
         print('Episode {}\tLast num step: {:.2f}\tLast reward Alpha: {:.2f}\t'
               'Last reward Beta: {:.2f}\tInfo: {}\tEval: {}'
               .format(i_episode, env.total_Tstep, env.agent_dict.alpha.total_reward,
@@ -412,6 +422,12 @@ if __name__ == '__main__':
     plt.xlabel('episode')
     plt.ylabel('episode_step')
     plt.plot(Agent_beta.episode_step)
+    plt.show()
+
+    plt.title('eval_win_rate')
+    plt.xlabel('episode')
+    plt.ylabel('eval_win_rate')
+    plt.plot(eval_win_rate)
     plt.show()
 
     env.render()
