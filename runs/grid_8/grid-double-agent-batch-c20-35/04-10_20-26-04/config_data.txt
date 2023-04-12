@@ -1,0 +1,4 @@
+rat: None
+target: None
+max_Tstep: 800
+REWARD: {'WIN': 50, 'WALL': -10, 'MOVE': 0, 'VISITED': 0, 'HEURISTIC': True, 'HEURISTIC_FACTOR': None}

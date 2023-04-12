@@ -1,0 +1,26 @@
+visited_mark: 0.8
+end_mark: 1.5
+rat_mark: 0.5
+LEFT: 0
+UP: 1
+RIGHT: 2
+DOWN: 3
+actions_dict: {0: 'left', 1: 'up', 2: 'right', 3: 'down'}
+num_actions: 4
+maze_path: maze8n_3.txt
+ob_size: 3
+ENV_NAME: grid_maze8n_3
+BATCH_SIZE: 128
+GAMMA: 0.99
+EPS_START: 0.95
+EPS_END: 0.05
+EPS_DECAY: 10000
+TAU: 0.005
+LR: 0.001
+num_episodes: 500
+max_Tstep: 800
+sync_target_net_freq: 10000.0
+R_GOAL: 50
+R_WALL: -10
+R_MOVE: 0
+R_Heuristic: False
