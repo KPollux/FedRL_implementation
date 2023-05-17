@@ -1,0 +1,10 @@
+num_actions: 4
+maze_size: 16
+BATCH_SIZE: 128
+GAMMA: 0.99
+EPS_START: 0.95
+EPS_END: 0.05
+EPS_DECAY: 20000
+TAU: 0.005
+LR: 0.0005
+num_episodes: 1
