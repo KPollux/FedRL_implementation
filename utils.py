@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def sync_Agents_weights(agents_nets):
+def get_global_weights(agents_nets):
     number_of_agents = len(agents_nets)
     
     global_dqn_para = agents_nets[0].state_dict()
@@ -24,6 +24,16 @@ def sync_Agents_weights(agents_nets):
         else:
             for key in net_dqn_para:
                 global_dqn_para[key] += net_dqn_para[key] / number_of_agents
+
+    # for idx in range(number_of_agents):
+    #     agents_nets[idx].load_state_dict(global_dqn_para)
+    return global_dqn_para
+
+def sync_Agents_weights(agents_nets):
+
+    number_of_agents = len(agents_nets)
+
+    global_dqn_para = get_global_weights(agents_nets)
 
     for idx in range(number_of_agents):
         agents_nets[idx].load_state_dict(global_dqn_para)
@@ -61,7 +71,7 @@ def plot_rewards(agent_episode_rewards, show_result=False, zero_point=None, ylab
 
 
 
-def draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES):
+def draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES, window_size=100, title='', xlims=[None, None], ylims=[None, None]):
     # Convert agent_rewards and agent_paths_length to numpy arrays for easier manipulation
     agent_rewards_np = [np.array(rewards) for rewards in agent_rewards]
     agent_paths_length_np = [np.array(lengths) for lengths in agent_paths_length]
@@ -78,25 +88,38 @@ def draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES):
     # Plotting
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 15))
 
+    # Set larger font size
+    plt.rcParams.update({'font.size': 15})
+
     # Rewards
     for i in range(n_agents):
-        ax1.plot(episodes, moving_average(agent_rewards_np[i]), label=f'Agent {i+1}')
+        ax1.plot(episodes, moving_average(agent_rewards_np[i], window_size), label=f'Agent {i+1}')
         # ax1.fill_between(episodes, rewards_means[i]-rewards_std[i], rewards_means[i]+rewards_std[i], alpha=0.2)
-    ax1.set_xlabel('Episodes')
-    ax1.set_ylabel('Cumulative Rewards')
-    ax1.set_title('Rewards per Episode for each Agent')
+    ax1.set_xlabel('Episodes', fontsize=15)
+    ax1.set_ylabel('Cumulative Rewards', fontsize=15)
+    ax1.set_title(title + 'Rewards per Episode for each Agent')
     ax1.grid(True)
     ax1.legend()
+    if xlims[0] is not None:
+        ax1.set_xlim(xlims[0])
+    if ylims[0] is not None:
+        ax1.set_ylim(ylims[0])
+    ax1.tick_params(axis='both', which='major', labelsize=15)
 
     # Path lengths
     for i in range(n_agents):
-        ax2.plot(episodes, moving_average(agent_paths_length_np[i]), label=f'Agent {i+1}')
+        ax2.plot(episodes, moving_average(agent_paths_length_np[i], window_size), label=f'Agent {i+1}')
         # ax2.fill_between(episodes, paths_length_means[i]-paths_length_std[i], paths_length_means[i]+paths_length_std[i], alpha=0.2)
-    ax2.set_xlabel('Episodes')
-    ax2.set_ylabel('Path Length')
-    ax2.set_title('Path Length per Episode for each Agent')
+    ax2.set_xlabel('Episodes', fontsize=15)
+    ax2.set_ylabel('Path Length', fontsize=15)
+    ax2.set_title(title + 'Path Length per Episode for each Agent')
     ax2.grid(True)
     ax2.legend()
+    if xlims[1] is not None:
+        ax2.set_xlim(xlims[1])
+    if ylims[1] is not None:
+        ax2.set_ylim(ylims[1])
+    ax2.tick_params(axis='both', which='major', labelsize=15)
 
     # Show the plots
     plt.tight_layout()
@@ -236,6 +259,7 @@ class DuelingDQNLast(nn.Module):
 
         # 只保留最后一个时间步的输出
         x = x[:, -1, :]
+        # x = torch.relu(x)
 
         # 计算值函数和优势函数
         value = self.value_stream(x)
@@ -290,10 +314,10 @@ def create_dueling_dqn_network(input_shape, n_actions):
 
 
 
-# model = DuelingDQN(input_shape=25, hidden_dim=128, n_actions=4)
-model = DuelingDQNLast(input_dim=25, hidden_dim=32, output_dim=4)
-sample = torch.randn(1, 5, 25)
-output = model(sample)
-print(output)
-# best = output.argmax(-1)
-# print(best)
+# # model = DuelingDQN(input_shape=25, hidden_dim=128, n_actions=4)
+# model = DuelingDQNLast(input_dim=25, hidden_dim=32, output_dim=4)
+# sample = torch.randn(1, 5, 25)
+# output = model(sample)
+# print(output)
+# # best = output.argmax(-1)
+# # print(best)

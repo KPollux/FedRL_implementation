@@ -129,7 +129,7 @@ class Gridworld:
 # np.savetxt('maze_cross.txt', maze_cross, fmt='%f')
 # if __main__():
 
-maze_cross = np.loadtxt('maze_cross.txt')
+maze_cross = np.loadtxt('maze_cross_level4.txt')
 
 # %%
 env = Gridworld(size=17, n_agents=2, heuristic_reward=True, maze=maze_cross)
@@ -139,7 +139,7 @@ env.render()
 # %%
 env.observe(0)
 # %%
-observations, rewards, dones = env.step(1, 2)
+# observations, rewards, dones = env.step(1, 2)
 env.render()
 print(env.observe(0))
 print(env.observe(1))
@@ -152,16 +152,18 @@ env.observe(1)
 env.reset()
 env.render()
 # %%
-size = 16
+size = 17
 # start = (np.random.randint(0, self.size//2), np.random.randint(self.size//2, self.size))
 # start = (np.random.randint(self.size//2, self.size), np.random.randint(0, self.size//2))
 mdis = []
-for x in range(0, 16//2):
-    for y in range (0, 16//2):
+for x in range(0, 17//2):
+    for y in range (0, 17//2):
         # 求每个(x,y)到(15, 15)的Taxicab geometry
-        mdis.append(abs(x-15) + abs(y-15))
+        mdis.append(abs(x-16) + abs(y-16))
         
         
 # %%
 np.mean(mdis)
+# # %%
+
 # %%

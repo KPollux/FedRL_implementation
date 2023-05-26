@@ -1,13 +1,15 @@
 # %%
 from itertools import count
+import os
 import pickle
 import random
+import time
 from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from tqdm import trange
 from cross_gridworld import Gridworld
-from utils import DuelingDQNLast, ReplayMemory, DQN, Transition, draw_history, draw_path, moving_average, plot_rewards, sync_Agents_weights
+from utils import DuelingDQNLast, ReplayMemory, DQN, Transition, draw_history, draw_path, get_global_weights, moving_average, plot_rewards, sync_Agents_weights
 import torch.nn.functional as F
 import math
 from IPython.display import clear_output
@@ -33,7 +35,7 @@ def select_action(state, policy_net, steps_done):
 
     
 def flatten(observation):
-    return torch.tensor(observation, device=device).view(-1)
+    return torch.tensor(observation, device=device).float().view(-1)
 
 
 def optimize_model(policy_net, target_net, memory, batch_size, gamma, optimizer):
@@ -88,27 +90,34 @@ def optimize_model(policy_net, target_net, memory, batch_size, gamma, optimizer)
 
 
 # %%
-def main(share_params=False, FL=False):
+def main(share_params=False, FL=False, role=False, share_memory=False):
     # Hyperparameters
-    EPISODES = 500
+    EPISODES = 1000
     MAX_STEPS_PER_EPISODE = 256  # Maximum steps per episode
     BATCH_SIZE = 64
     GAMMA = 0.9
     MEMORY_SIZE = 10000
     HISTORY_LENGTH = 20
-    LR = 5e-5  # 5e-5ForOpenMap
+    LR = 1e-5 #1e-5ForNoShare  # 5e-5ForOpenMap
     TARGET_UPDATE = 20
     TAU = 0.005
-    MAZE = np.loadtxt('maze_cross.txt') * 0.0 + 1.0
+    MAZE = np.loadtxt('maze_cross_level4.txt')
     SIZE = MAZE.shape[0]
     FL_GLOBAL_UPDATE = 5
+
+    OBSERVATION_SPACE = 25
 
     # Create environment
     env = Gridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
 
+    # Create role matrix
+    roles = torch.eye(env.n_agents).cuda()
+    if role:
+        OBSERVATION_SPACE += env.n_agents
+
     # Create DQN networks and optimizers for each agent
-    policy_nets = [DuelingDQNLast(25, 32, 4).to(device) for _ in range(env.n_agents)]
-    target_nets = [DuelingDQNLast(25, 32, 4).to(device) for _ in range(env.n_agents)]
+    policy_nets = [DuelingDQNLast(OBSERVATION_SPACE, 32, 4).to(device) for _ in range(env.n_agents)]
+    target_nets = [DuelingDQNLast(OBSERVATION_SPACE, 32, 4).to(device) for _ in range(env.n_agents)]
     optimizers = [torch.optim.AdamW(net.parameters(), lr = LR) for net in policy_nets]
 
     # Initialize networks
@@ -133,7 +142,10 @@ def main(share_params=False, FL=False):
         FL_sync_count = 0
 
     # Create memory
-    memory = ReplayMemory(MEMORY_SIZE)
+    memorys = [ReplayMemory(MEMORY_SIZE) for _ in range(env.n_agents)]
+    if share_memory:
+        memory_share = ReplayMemory(MEMORY_SIZE*2)
+        memorys = [memory_share for _ in range(env.n_agents)]
 
     # Initialize epsilon
     episode_durations = [[] for _ in range(env.n_agents)]
@@ -153,7 +165,7 @@ def main(share_params=False, FL=False):
 
         # Record the history path for each agent
         # history = [[] for _ in range(env.n_agents)]
-        history = [[torch.zeros(5*5, device=device)] * (HISTORY_LENGTH-1) for _ in range(env.n_agents)]
+        history = [[torch.zeros(OBSERVATION_SPACE, device=device)] * (HISTORY_LENGTH-1) for _ in range(env.n_agents)]
 
         # Log intermediate variables
         rewards = [0.0 for _ in range(env.n_agents)]
@@ -162,7 +174,7 @@ def main(share_params=False, FL=False):
 
         # Store the initial state in history
         for i in range(env.n_agents):
-            initial_observation = flatten(env.observe(i))
+            initial_observation = flatten(env.observe(i)) if not role else torch.cat((flatten(env.observe(i)), roles[i]))
             # history[i].extend([initial_observation for _ in range(HISTORY_LENGTH-1)])
             history[i].append(initial_observation)
             full_history_position[i].append(env.agents[i]['pos'])
@@ -185,14 +197,17 @@ def main(share_params=False, FL=False):
             # env.render()
             for i in range(env.n_agents):
                 if FL:
-                    if len(memory) < BATCH_SIZE:
+                    if len(memorys[i]) < BATCH_SIZE:
                         pass
                     else:
                         FL_sync_count += 1  # 每个agent都会增加计数
                         # Sync global paras
                         # 只有当所有agent都更新完，且达到了FL_GLOBAL_UPDATE次数，才会更新参数
                         if FL_sync_count % env.n_agents == 0 and FL_sync_count/env.n_agents % FL_GLOBAL_UPDATE == 0:
-                            sync_Agents_weights(policy_nets)
+                            global_dqn_para = get_global_weights(policy_nets)
+                            for i in range(env.n_agents):
+                                policy_nets[i].load_state_dict(global_dqn_para)
+                                # target_nets[i].load_state_dict(global_dqn_para)
 
                 # The agent might have been done
                 if env.agents[i]['done']:
@@ -206,8 +221,11 @@ def main(share_params=False, FL=False):
                 steps_done[i] += 1  # Increment steps_done for this agent
 
                 # Flatten next_state and add time dimension
-                next_state_flat = torch.tensor(next_state.flatten(), device=device).float()
-
+                if role:
+                    next_state_flat = torch.cat((flatten(next_state), roles[i]))
+                else:
+                    next_state_flat = flatten(next_state)
+                
                 # Record agent's path
                 full_history_position[i].append(env.agents[i]['pos'])
 
@@ -225,13 +243,13 @@ def main(share_params=False, FL=False):
                 # Store the transition in memory
                 action = torch.tensor(action).view(1, -1).to(device)
                 reward = torch.tensor(reward).view(1, -1).to(device)
-                memory.push(state, action, reward, next_state, done)
+                memorys[i].push(state, action, reward, next_state, done)
 
                 # Move to the next state
                 state = next_state_flat
 
                 # Perform one step of the optimization (on the policy network)
-                optimize_model(policy_nets[i], target_nets[i], memory, BATCH_SIZE, GAMMA, optimizers[i])
+                optimize_model(policy_nets[i], target_nets[i], memorys[i], BATCH_SIZE, GAMMA, optimizers[i])
 
                 if done:
                     # full_history_position[i].append(env.end_point)
@@ -252,15 +270,38 @@ def main(share_params=False, FL=False):
         # print(f'i_episode{i_episode}, steps_done{[agent_paths_length[k][-1] for k in range(2)]}, rewards{rewards}')
         # plot_rewards(agent_paths_length)
     
-    return train_history
+    #save models
+    # name the save floder
+    floder_name = ''
+
+    floder_name += 'FL_' if FL else ''
+    floder_name += 'role_' if role else ''
+    floder_name += 'Paramsshare_' if share_params else ''
+    floder_name += 'Memoryshare_' if share_memory else ''
+    floder_name += 'level4_'
+    floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+    
+    # create floder
+    if not os.path.exists('logs\\' + floder_name):
+        os.mkdir('logs\\' + floder_name)
+
+    for i in range(env.n_agents):
+        save_path = './logs/{}/LR{}_agent{}.pth'.format(floder_name, LR, i)
+        if not os.path.exists('./logs/{}'.format(floder_name)):
+            os.mkdir('./logs/{}'.format(floder_name))
+        torch.save(policy_nets[i].state_dict(), save_path)
+    
+    with open('./logs/{}/train_history.pkl'.format(floder_name), 'wb') as f:
+        pickle.dump(train_history, f)
+
+    return train_history, policy_nets, floder_name
 
 
-train_history = main(FL=True)
-
+train_history, policy_nets, floder_name = main(share_params=False, FL=True, role=True, share_memory=False)
 
 # %% 绘制参数
 n_agents = 2
-EPISODES = 500
+EPISODES = 1000
 env_size = 17
 
 agent_rewards = train_history['agent_rewards']
@@ -271,16 +312,21 @@ agent_paths = train_history['agent_paths']
 draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES)
 
 # %%
-episode_index = 400
+episode_index = 499
 draw_path(episode_index, agent_paths, n_agents, env_size)
 print(agent_paths)
 # %%
 plt.plot(agent_paths_length[0])
 # %%
 # save train_history
-with open('logs/train_history_open_FL.pkl', 'wb') as f:
-    pickle.dump(train_history, f)
+# with open('./logs/{}/train_history.pkl'.format(floder_name), 'wb') as f:
+#     train_history = pickle.dump(train_history, f)
 # %%
 # load train_history
-with open('logs/train_history_open_normal.pkl', 'rb') as f:
+with open('./logs/Memoryshare_level4_2023-05-23-00-17-26/train_history.pkl', 'rb') as f:
     train_history = pickle.load(f)
+# %%
+
+torch.eye(3)
+# %%
+plt.plot(agent_paths_length[1])

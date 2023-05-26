@@ -1,11 +1,13 @@
 # %%
 from itertools import count
+import pickle
 import random
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from tqdm import trange
 from cross_gridworld import Gridworld
-from utils import ReplayMemory, DQN, Transition, draw_history, draw_path, moving_average, plot_rewards
+from utils import DuelingDQNLast, ReplayMemory, DQN, Transition, draw_history, draw_path, moving_average, plot_rewards, sync_Agents_weights
 import torch.nn.functional as F
 import math
 from IPython.display import clear_output
@@ -15,7 +17,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def select_action(state, policy_net, steps_done):
     EPS_START = 0.9
-    EPS_END = 0.05
+    EPS_END = 0.1
     EPS_DECAY = 200
 
     sample = random.random()
@@ -31,7 +33,7 @@ def select_action(state, policy_net, steps_done):
 
     
 def flatten(observation):
-    return torch.tensor(observation, device=device).view(-1)
+    return torch.tensor(observation, device=device).float().view(-1)
 
 
 def optimize_model(policy_net, target_net, memory, batch_size, gamma, optimizer):
@@ -51,7 +53,7 @@ def optimize_model(policy_net, target_net, memory, batch_size, gamma, optimizer)
     #                                             if s is not None])
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not True,
                                           batch.done)), device=device, dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s, mask in zip(batch.next_state, non_final_mask) if mask]) # type: ignore
+    non_final_next_states = torch.cat([s for s, mask in zip(batch.next_state, non_final_mask) if mask])
 
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
@@ -86,26 +88,34 @@ def optimize_model(policy_net, target_net, memory, batch_size, gamma, optimizer)
 
 
 # %%
-def main():
+def main(share_params=False, FL=False, role=False, share_memory=False):
     # Hyperparameters
-    EPISODES = 1000
+    EPISODES = 500
     MAX_STEPS_PER_EPISODE = 256  # Maximum steps per episode
-    BATCH_SIZE = 16
-    GAMMA = 0.99
+    BATCH_SIZE = 64
+    GAMMA = 0.9
     MEMORY_SIZE = 10000
     HISTORY_LENGTH = 20
-    LR = 2e-3
+    LR = 5e-6 #1e-5ForNoShare  # 5e-5ForOpenMap
     TARGET_UPDATE = 20
     TAU = 0.005
-    MAZE = np.loadtxt('maze_cross.txt') * 0.0 + 1.0
+    MAZE = np.loadtxt('maze_cross_level4.txt')
     SIZE = MAZE.shape[0]
+    FL_GLOBAL_UPDATE = 5
+
+    OBSERVATION_SPACE = 25
 
     # Create environment
     env = Gridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
 
+    # Create role matrix
+    roles = torch.eye(env.n_agents).cuda()
+    if role:
+        OBSERVATION_SPACE += env.n_agents
+
     # Create DQN networks and optimizers for each agent
-    policy_nets = [DQN(25, 32, 4).to(device) for _ in range(env.n_agents)]
-    target_nets = [DQN(25, 32, 4).to(device) for _ in range(env.n_agents)]
+    policy_nets = [DuelingDQNLast(OBSERVATION_SPACE, 32, 4).to(device) for _ in range(env.n_agents)]
+    target_nets = [DuelingDQNLast(OBSERVATION_SPACE, 32, 4).to(device) for _ in range(env.n_agents)]
     optimizers = [torch.optim.AdamW(net.parameters(), lr = LR) for net in policy_nets]
 
     # Initialize networks
@@ -113,8 +123,27 @@ def main():
         target_nets[i].load_state_dict(policy_nets[i].state_dict())
         target_nets[i].eval()
 
+    # 共享参数
+    if share_params:
+        policy_net = policy_nets[0]
+        target_net = target_nets[0]
+        for i in range(env.n_agents):
+            policy_nets[i] = policy_net
+            target_nets[i] = target_net
+    
+    # Federated Learning Init
+    if FL:
+        global_paras = policy_nets[0].state_dict()
+        for i in range(env.n_agents):
+            policy_nets[i].load_state_dict(global_paras)
+            target_nets[i].load_state_dict(global_paras)
+        FL_sync_count = 0
+
     # Create memory
-    memory = ReplayMemory(MEMORY_SIZE)
+    memorys = [ReplayMemory(MEMORY_SIZE) for _ in range(env.n_agents)]
+    if share_memory:
+        memory_share = ReplayMemory(MEMORY_SIZE*2)
+        memorys = [memory_share for _ in range(env.n_agents)]
 
     # Initialize epsilon
     episode_durations = [[] for _ in range(env.n_agents)]
@@ -134,7 +163,7 @@ def main():
 
         # Record the history path for each agent
         # history = [[] for _ in range(env.n_agents)]
-        history = [[torch.zeros(5*5, device=device)] * (HISTORY_LENGTH-1) for _ in range(env.n_agents)]
+        history = [[torch.zeros(OBSERVATION_SPACE, device=device)] * (HISTORY_LENGTH-1) for _ in range(env.n_agents)]
 
         # Log intermediate variables
         rewards = [0.0 for _ in range(env.n_agents)]
@@ -143,7 +172,7 @@ def main():
 
         # Store the initial state in history
         for i in range(env.n_agents):
-            initial_observation = flatten(env.observe(i))
+            initial_observation = flatten(env.observe(i)) if not role else torch.cat((flatten(env.observe(i)), roles[i]))
             # history[i].extend([initial_observation for _ in range(HISTORY_LENGTH-1)])
             history[i].append(initial_observation)
             full_history_position[i].append(env.agents[i]['pos'])
@@ -165,6 +194,16 @@ def main():
             # clear_output(wait=True)  # clears the output of the cell
             # env.render()
             for i in range(env.n_agents):
+                if FL:
+                    if len(memorys[i]) < BATCH_SIZE:
+                        pass
+                    else:
+                        FL_sync_count += 1  # 每个agent都会增加计数
+                        # Sync global paras
+                        # 只有当所有agent都更新完，且达到了FL_GLOBAL_UPDATE次数，才会更新参数
+                        if FL_sync_count % env.n_agents == 0 and FL_sync_count/env.n_agents % FL_GLOBAL_UPDATE == 0:
+                            sync_Agents_weights(policy_nets)
+
                 # The agent might have been done
                 if env.agents[i]['done']:
                     continue
@@ -177,8 +216,11 @@ def main():
                 steps_done[i] += 1  # Increment steps_done for this agent
 
                 # Flatten next_state and add time dimension
-                next_state_flat = torch.tensor(next_state.flatten(), device=device).float()
-
+                if role:
+                    next_state_flat = torch.cat((flatten(next_state), roles[i]))
+                else:
+                    next_state_flat = flatten(next_state)
+                
                 # Record agent's path
                 full_history_position[i].append(env.agents[i]['pos'])
 
@@ -196,13 +238,13 @@ def main():
                 # Store the transition in memory
                 action = torch.tensor(action).view(1, -1).to(device)
                 reward = torch.tensor(reward).view(1, -1).to(device)
-                memory.push(state, action, reward, next_state, done)
+                memorys[i].push(state, action, reward, next_state, done)
 
                 # Move to the next state
                 state = next_state_flat
 
                 # Perform one step of the optimization (on the policy network)
-                optimize_model(policy_nets[i], target_nets[i], memory, BATCH_SIZE, GAMMA, optimizers[i])
+                optimize_model(policy_nets[i], target_nets[i], memorys[i], BATCH_SIZE, GAMMA, optimizers[i])
 
                 if done:
                     # full_history_position[i].append(env.end_point)
@@ -211,7 +253,7 @@ def main():
                     agent_paths_length[i].append(len(full_history_position[i]))
                     agent_rewards[i].append(rewards[i])     # Log cumulative reward
                     continue
-
+            
             # Update the target network, copying all weights and biases in DQN
             if i_episode % TARGET_UPDATE == 0:
                 for i in range(env.n_agents):
@@ -226,12 +268,11 @@ def main():
     return train_history
 
 
-train_history = main()
-
+train_history = main(share_params=False, FL=False, role=False, share_memory=True)
 
 # %% 绘制参数
 n_agents = 2
-EPISODES = 1000
+EPISODES = 500
 env_size = 17
 
 agent_rewards = train_history['agent_rewards']
@@ -242,7 +283,20 @@ agent_paths = train_history['agent_paths']
 draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES)
 
 # %%
-episode_index = 400
+episode_index = 480
 draw_path(episode_index, agent_paths, n_agents, env_size)
+print(agent_paths)
+# %%
+plt.plot(agent_paths_length[0])
+# %%
+# save train_history
+with open('logs/train_history_level4_normalRole_5e-6.pkl', 'wb') as f:
+    pickle.dump(train_history, f)
+# %%
+# load train_history
+with open('logs/train_history_open_normal.pkl', 'rb') as f:
+    train_history = pickle.load(f)
+# %%
 
+torch.eye(3)
 # %%
