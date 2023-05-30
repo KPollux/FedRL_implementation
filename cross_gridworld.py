@@ -2,15 +2,21 @@
 import numpy as np
 
 class Gridworld:
-    def __init__(self, size=17, n_agents=2, heuristic_reward=True, maze=None):
+    def __init__(self, size=17, n_agents=2, heuristic_reward=True, maze=None, same_room=False):
         self.size = size
         self.n_agents = n_agents
         self.heuristic_reward = heuristic_reward
         self.agents = []
+        self.reward_dict = [{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True},
+                            {'step': 0, 'collision': 0, 'goal': 50, 'heuristic': False},
+                            {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True}]
+
         self.map = maze if maze is not None else np.zeros((self.size, self.size))  # Use provided maze, if any
         self.maze = maze
+        self.same_room = same_room
 
-        self.end_point = (self.size - 1, self.size - 1)
+        self.action_space = [0, 1, 2, 3]  # Up, right, down, left
+        self.end_point = (size-1, size-1)
 
         self.init_map_and_agents()
 
@@ -28,12 +34,15 @@ class Gridworld:
 
         for i in range(self.n_agents):
             while True:
-                if i == 0:
-                    start = (np.random.randint(0, self.size//2), np.random.randint(self.size//2, self.size))
-                elif i == 1:
-                    start = (np.random.randint(self.size//2, self.size), np.random.randint(0, self.size//2))
+                if not self.same_room:
+                    if i == 0:
+                        start = (np.random.randint(0, self.size//2), np.random.randint(self.size//2, self.size))
+                    elif i == 1:
+                        start = (np.random.randint(self.size//2, self.size), np.random.randint(0, self.size//2))
+                    else:
+                        start = (np.random.randint(0, self.size//2), np.random.randint(0, self.size//2))
                 else:
-                    start = (np.random.randint(0, self.size//2), np.random.randint(0, self.size//2))
+                    start = (np.random.randint(0, self.size//2), np.random.randint(self.size//2, self.size))
 
                 if self.map[start] == 1:  # Ensure agents do not start on obstacles
                     self.agents.append({'pos': start, 'done': False, 'reward': 0})
@@ -56,16 +65,16 @@ class Gridworld:
             new_pos[1] = max(0, new_pos[1] - 1)
 
         if old_pos == new_pos or self.map[tuple(new_pos)] == 0:  # hit wall or border
-            reward = -10
+            reward = self.reward_dict[agent_idx]['collision']
         elif tuple(new_pos) == self.end_point:  # reach goal
             self.agents[agent_idx]['pos'] = tuple(new_pos)
             self.agents[agent_idx]['done'] = True
-            reward = 50
+            reward = self.reward_dict[agent_idx]['goal']
         else:  # free cell
             self.agents[agent_idx]['pos'] = tuple(new_pos)
-            reward = -2
-            if self.heuristic_reward:
-                reward += self.size/(np.abs(np.array(new_pos) - np.array(self.end_point))).sum()
+            reward = self.reward_dict[agent_idx]['step']
+            if self.heuristic_reward and self.reward_dict[agent_idx]['heuristic']:
+                reward += - (np.abs(np.array(new_pos) - np.array(self.end_point))).sum() / self.size
 
         return self.observe(agent_idx), reward, self.agents[agent_idx]['done']
 
@@ -102,6 +111,9 @@ class Gridworld:
         observation = observation[pos[0]-2:pos[0]+3, pos[1]-2:pos[1]+3]
         # print(observation)
         return observation
+    
+    def get_state(self, agent_idx):
+        return self.agents[agent_idx]['pos']
 
 
 
@@ -139,7 +151,7 @@ env.render()
 # %%
 env.observe(0)
 # %%
-# observations, rewards, dones = env.step(1, 2)
+observations, rewards, dones = env.step(1, 2)
 env.render()
 print(env.observe(0))
 print(env.observe(1))

@@ -150,18 +150,18 @@ agent_paths, agent_paths_length, agent_rewards, episode_durations = test()
 # %%
 
 # %%
-with open('./logs/FL_role_level4_2023-05-23-09-09-12/train_history.pkl', 'rb') as f:
+with open('./logs/Q_learning_Paramsshare_level4_2023-05-29-03-41-35/train_history.pkl', 'rb') as f:
     train_history = pickle.load(f)
 
 log_agent_rewards = train_history['agent_rewards']
 log_agent_paths_length = train_history['agent_paths_length']
 log_agent_paths = train_history['agent_paths']
 
-n_agents = 2
+n_agents = 3
 EPISODES = 1000
 env_size = 17
 
-draw_history(log_agent_rewards, log_agent_paths_length, n_agents, EPISODES, 64, title='VFL ID Embedding ', ylims=[None, (100, 260)])
+draw_history(log_agent_rewards, log_agent_paths_length, n_agents, EPISODES, 64, title='Q_learning_Paramsshare ', ylims=[None, (0, 450)])
 # %%
 plt.plot(log_agent_paths_length[0])
 plt.xlabel('Episode')

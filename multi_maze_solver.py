@@ -90,7 +90,7 @@ def optimize_model(policy_net, target_net, memory, batch_size, gamma, optimizer)
 
 
 # %%
-def main(share_params=False, FL=False, role=False, share_memory=False):
+def main(share_params=False, FL=False, role=False, share_memory=False, same_init=False):
     # Hyperparameters
     EPISODES = 1000
     MAX_STEPS_PER_EPISODE = 256  # Maximum steps per episode
@@ -108,10 +108,10 @@ def main(share_params=False, FL=False, role=False, share_memory=False):
     OBSERVATION_SPACE = 25
 
     # Create environment
-    env = Gridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
+    env = Gridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE, same_room=same_init)
 
     # Create role matrix
-    roles = torch.eye(env.n_agents).cuda()
+    roles = torch.eye(env.n_agents).cuda()*0.5
     if role:
         OBSERVATION_SPACE += env.n_agents
 
@@ -272,8 +272,9 @@ def main(share_params=False, FL=False, role=False, share_memory=False):
     
     #save models
     # name the save floder
-    floder_name = ''
+    floder_name = 'ME512_'
 
+    floder_name += 'SameInit_' if same_init else ''
     floder_name += 'FL_' if FL else ''
     floder_name += 'role_' if role else ''
     floder_name += 'Paramsshare_' if share_params else ''
@@ -282,8 +283,8 @@ def main(share_params=False, FL=False, role=False, share_memory=False):
     floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
     
     # create floder
-    if not os.path.exists('logs\\' + floder_name):
-        os.mkdir('logs\\' + floder_name)
+    if not os.path.exists('./logs/' + floder_name):
+        os.mkdir('./logs/' + floder_name)
 
     for i in range(env.n_agents):
         save_path = './logs/{}/LR{}_agent{}.pth'.format(floder_name, LR, i)
@@ -297,7 +298,8 @@ def main(share_params=False, FL=False, role=False, share_memory=False):
     return train_history, policy_nets, floder_name
 
 
-train_history, policy_nets, floder_name = main(share_params=False, FL=True, role=True, share_memory=False)
+train_history, policy_nets, floder_name = main(share_params=False, FL=False,
+                                                role=False, share_memory=False, same_init=True)
 
 # %% 绘制参数
 n_agents = 2
