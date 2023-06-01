@@ -74,7 +74,7 @@ def draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES, window_s
 
 # %%
 
-with open('./logs/Q_learning_M17_20_level4_2023-05-30-00-21-25/train_history.pkl', 'rb') as f:
+with open('./logs/Q_learning_M17_20_all_delta_level4_2023-05-30-06-24-32/train_history_0.pkl', 'rb') as f:
     train_history = pickle.load(f)
 
 log_agent_rewards = train_history['agent_rewards']
@@ -85,9 +85,38 @@ n_agents = 3
 EPISODES = 1000
 env_size = 17
 
-TITLE = 'M17_20_Q_learning_FLMax '
+TITLE = 'Q_learning_M17_20_all_delta '
 draw_history(log_agent_rewards, log_agent_paths_length, n_agents, EPISODES, 64, title=TITLE) #, xlims=[0, 400], ylims=[0, 200])
 draw_history(log_agent_rewards, log_agent_paths_length, n_agents, EPISODES, 64, title=TITLE, xlims=[0, 400], ylims=[0, 200])
+
+# %%
+
+fold = 10
+# path = './logs/Q_learning_0Reward_10flod_onlyA_level4_2023-05-30-02-27-34/'
+path = './logs/Q_learning_0Reward_10flod_FLMax_level4_2023-05-30-02-22-53/'
+# path = './logs/Q_learning_0Reward_10flod_FLAll_level4_2023-05-30-06-33-19/'
+# path = './logs/Q_learning_0Reward_10flod_FL_level4_2023-05-30-02-16-58/'
+# path = './logs/Q_learning_0Reward_10flod_level4_2023-05-30-02-05-48/'
+# path = './logs/Q_learning_0Reward_10flod_Paramsshare_level4_2023-05-30-02-11-30/'
+
+for i in range(fold):
+    with open(path + 'train_history_{}.pkl'.format(i), 'rb') as f:
+        train_history = pickle.load(f)
+        if i == 0:
+            log_agent_rewards = np.array(train_history['agent_rewards']) / fold
+            log_agent_paths_length = np.array(train_history['agent_paths_length']) / fold
+            # log_agent_paths = train_history['agent_paths'] / fold
+        else:
+            log_agent_rewards += np.array(train_history['agent_rewards']) / fold
+            log_agent_paths_length += np.array(train_history['agent_paths_length']) / fold
+
+n_agents = 2
+EPISODES = 1000
+env_size = 17
+
+TITLE = path.split('/')[-2].split('_level4')[0] + ' '
+# TITLE = 'Q_learning_0Reward_10flod_level4 '
+draw_history(log_agent_rewards, log_agent_paths_length, n_agents, EPISODES, 64, title=TITLE) #, xlims=[0, 400], ylims=[0, 200])
 # %%
 plt.plot(log_agent_paths_length[0])
 plt.xlabel('Episode')

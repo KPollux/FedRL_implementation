@@ -8,7 +8,8 @@ class Gridworld:
         self.heuristic_reward = heuristic_reward
         self.agents = []
         self.reward_dict = [{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True},
-                            {'step': 0, 'collision': 0, 'goal': 50, 'heuristic': False},
+                            {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
+                            # {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True},
                             {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True}]
 
         self.map = maze if maze is not None else np.zeros((self.size, self.size))  # Use provided maze, if any

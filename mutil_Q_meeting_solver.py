@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from tqdm import trange
-from cross_gridworld import Gridworld
+from meeting_gridworld import MeetingGridworld as Gridworld
 # from meeting_gridworld import MeetingGridworld
 
 from utils import DuelingDQNLast, ReplayMemory, DQN, Transition, draw_history, draw_path, get_global_weights, moving_average, plot_rewards, sync_Agents_weights
@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=False, FLdev=False, onlyA=False,
-          FLAll=False, floder_name=None, n_times=0):
+          FLAll=False, floder_name=None, n_times=0, save_log=False):
     # Hyperparameters
     EPISODES = 1000
     EPSILON = 0.1  # Random rate
@@ -59,7 +59,7 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                         'agent_rewards': agent_rewards, \
                         'agent_paths_length': agent_paths_length}
 
-    for i_episode in range(EPISODES):
+    for i_episode in trange(EPISODES):
         # Initialize the environment and state
         env.reset()
 
@@ -179,31 +179,32 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
     
     #save models
     # name the save floder
-    if floder_name is None:
-        floder_name = 'Q_learning_0Reward_10flod_'  # M17_20_all_delta_
+    if save_log:
+        if floder_name is None:
+            floder_name = 'Q_learning_0Reward_10flod_'  # M17_20_all_delta_
 
-        floder_name += 'FL_' if FL else ''
-        floder_name += 'FLMax_' if FLMax else ''
-        floder_name += 'FLAll_' if FLAll else ''
-        floder_name += 'onlyA_' if onlyA else ''
-        floder_name += 'role_' if role else ''
-        floder_name += 'Paramsshare_' if share_params else ''
-        floder_name += 'Memoryshare_' if share_memory else ''
-        floder_name += 'level4_'
-        floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+            floder_name += 'FL_' if FL else ''
+            floder_name += 'FLMax_' if FLMax else ''
+            floder_name += 'FLAll_' if FLAll else ''
+            floder_name += 'onlyA_' if onlyA else ''
+            floder_name += 'role_' if role else ''
+            floder_name += 'Paramsshare_' if share_params else ''
+            floder_name += 'Memoryshare_' if share_memory else ''
+            floder_name += 'level4_'
+            floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 
-    # create floder
-    if not os.path.exists('./logs/' + floder_name):
-        print('create floder: ', floder_name)
-        os.mkdir('./logs/' + floder_name)
+        # create floder
+        if not os.path.exists('./logs/' + floder_name):
+            print('create floder: ', floder_name)
+            os.mkdir('./logs/' + floder_name)
 
-    for i in range(env.n_agents):
-        # save Q_tables
-        with open('./logs/{}/Q_table_{}_{}.pkl'.format(floder_name, i, n_times), 'wb') as f:
-            pickle.dump(Q_tables[i], f)
-    
-    with open('./logs/{}/train_history_{}.pkl'.format(floder_name, n_times), 'wb') as f:
-        pickle.dump(train_history, f)
+        for i in range(env.n_agents):
+            # save Q_tables
+            with open('./logs/{}/Q_table_{}_{}.pkl'.format(floder_name, i, n_times), 'wb') as f:
+                pickle.dump(Q_tables[i], f)
+        
+        with open('./logs/{}/train_history_{}.pkl'.format(floder_name, n_times), 'wb') as f:
+            pickle.dump(train_history, f)
 
     return train_history, Q_tables, floder_name
 
@@ -213,14 +214,15 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 #                                                 FLdev=False)
 # %%
 floder_name = None
-for n in trange(10):
+for n in range(1):
     train_history, policy_nets, floder_name = main(share_params=False, FL=False,
                                                 role=False, share_memory=False, FLMax=False,
-                                                FLdev=False, onlyA=False, FLAll=True,
-                                                floder_name=floder_name, n_times=n)
+                                                FLdev=False, onlyA=False, FLAll=False,
+                                                floder_name=floder_name, n_times=n,
+                                                save_log=False)
 
 # %% 绘制参数
-n_agents = 3
+n_agents = 2
 EPISODES = 1000
 env_size = 17
 
