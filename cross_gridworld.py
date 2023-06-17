@@ -2,15 +2,25 @@
 import numpy as np
 
 class Gridworld:
-    def __init__(self, size=17, n_agents=2, heuristic_reward=True, maze=None, same_room=False):
+    def __init__(self, size=17, n_agents=2, heuristic_reward=True, maze=None, same_room=False,
+                 reward_dict=None, dynamic=False, wall_positions=None, wall_odds=None):
         self.size = size
         self.n_agents = n_agents
         self.heuristic_reward = heuristic_reward
         self.agents = []
-        self.reward_dict = [{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True},
-                            {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
-                            # {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True},
-                            {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True}]
+
+        if reward_dict is not None:
+            self.reward_dict = reward_dict
+        else:
+            self.reward_dict = [{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True},
+                                # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
+                                {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True},
+                                {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': True}]
+        
+        self.dynamic = dynamic
+        if self.dynamic:
+            self.wall_positions = wall_positions
+            self.wall_odds = wall_odds
 
         self.map = maze if maze is not None else np.zeros((self.size, self.size))  # Use provided maze, if any
         self.maze = maze
@@ -50,6 +60,9 @@ class Gridworld:
                     break
 
     def step(self, agent_idx, action):
+        if self.dynamic:
+            self.generate_dynamic_wall()
+
         reward = 0  # reset the reward at each step
         if self.agents[agent_idx]['done']:
             return self.observe(agent_idx), reward, True
@@ -115,6 +128,24 @@ class Gridworld:
     
     def get_state(self, agent_idx):
         return self.agents[agent_idx]['pos']
+    
+    def generate_dynamic_wall(self):
+        wall_positions = self.wall_positions
+        wall_odds = self.wall_odds
+        for i, wall_position in enumerate(wall_positions):
+            # wall_odds代表有wall_odds的概率生成墙
+            if np.random.uniform() < wall_odds[i]:
+                # 遍历所有agent，如果那个位置有agent，就不生成墙
+                agent_here = False
+                for agent in self.agents:
+                    if agent['pos'] == wall_position:
+                        agent_here = True
+                        break
+                # 如果那个位置没有agent，就生成墙
+                if not agent_here:
+                    self.map[wall_position] = 0                  
+            else:
+                self.map[wall_position] = 1
 
 
 

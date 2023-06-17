@@ -30,14 +30,14 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
     MAX_STEPS_PER_EPISODE = 512  # Maximum steps per episode
     GAMMA = 0.99
     LR = 0.1  # Learning rate
-    MAZE = np.loadtxt('maze_cross_level4.txt')  # maze_cross_level4.txt  maze17_0.2.txt
+    MAZE = np.loadtxt('maze17_0.2.txt')  # maze_cross_level4.txt  maze17_0.2.txt
     SIZE = MAZE.shape[0]
 
     FL_LOCAL_EPOCH = 5
 
     # Create environment
     # env = MeetingGridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
-    env = Gridworld(size=SIZE, n_agents=3, heuristic_reward=True, maze=MAZE)
+    env = Gridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
 
     num_states = SIZE * SIZE
     num_actions = 4
@@ -74,20 +74,24 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
         for t in count():
             # 一人走一步
             # Break the loop if the maximum steps per episode is reached or all agents are done
-            if t >= MAX_STEPS_PER_EPISODE or all([env.agents[i]['done'] for i in range(env.n_agents)]):
-                # 当超出最大步数时，对于没有完成的agent，记录其历史
+            if t >= MAX_STEPS_PER_EPISODE:  # or all([env.agents[i]['done'] for i in range(env.n_agents)]):
+                # 当超出最大步数时，记录其历史，无需判断是否done，因为相遇问题，两个Agent状态一致
                 for i in range(env.n_agents):
-                    if not env.agents[i]['done']:  # Only record for agents that are not done
-                        episode_durations[i].append(t + 1)
-                        agent_paths[i].append(full_history_position[i])
-                        agent_paths_length[i].append(len(full_history_position[i]))
-                        agent_rewards[i].append(rewards[i])     # Log cumulative reward
+                    # if not env.agents[i]['done']:  # Only record for agents that are not done
+                    episode_durations[i].append(t + 1)
+                    agent_paths[i].append(full_history_position[i])
+                    agent_paths_length[i].append(len(full_history_position[i]))
+                    agent_rewards[i].append(rewards[i])     # Log cumulative reward
                 break
 
             for idx in range(env.n_agents):
                 # The agent might have been done
                 if env.agents[idx]['done']:
-                    continue
+                #     episode_durations[idx].append(t + 1)
+                #     agent_paths[idx].append(full_history_position[idx])
+                #     agent_paths_length[idx].append(len(full_history_position[idx]))
+                #     agent_rewards[idx].append(rewards[idx])     # Log cumulative reward
+                    break
 
                 # Select and perform an action
                 state = env.get_state(idx)
@@ -115,13 +119,16 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                     Q_tables[idx][state_index, action] = \
                         Q_tables[idx][state_index, action] + LR * (reward + GAMMA * np.max(Q_tables[idx][next_state_index]) - Q_tables[idx][state_index, action])
                 state = next_state
-
-                if done:
+                
+            # 一个完成，都完成
+            if env.agents[0]['done']:
+                # 记录所有agent的历史
+                for idx in range(env.n_agents):
                     episode_durations[idx].append(t + 1)
                     agent_paths[idx].append(full_history_position[idx])
                     agent_paths_length[idx].append(len(full_history_position[idx]))
                     agent_rewards[idx].append(rewards[idx])     # Log cumulative reward
-                    continue
+                break
             
             if FL:
                 if t % FL_LOCAL_EPOCH == 0:
@@ -230,11 +237,10 @@ agent_rewards = train_history['agent_rewards']
 agent_paths_length = train_history['agent_paths_length']
 agent_paths = train_history['agent_paths']
 
-# %%
 draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES, window_size=64)
 agent_paths_length
 # %%
-episode_index = 900
+episode_index = 700
 draw_path(episode_index, agent_paths, n_agents, env_size)
 print(agent_paths)
 # %%

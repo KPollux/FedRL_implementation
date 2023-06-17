@@ -10,6 +10,13 @@ class MeetingGridworld:
         self.map = maze if maze is not None else np.zeros((self.size, self.size))  # Use provided maze, if any
         self.maze = maze
 
+        self.reward_dict = [
+            {'step': 0, 'collision': -10, 'goal': 50, 'heuristic': True},
+            # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
+            {'step': 0, 'collision': -10, 'goal': 50, 'heuristic': True},
+            # {'step': 0, 'collision': -10, 'goal': 50, 'heuristic': True}
+                            ]
+
         # self.end_point = (0, 0)
         self.action_space = [0, 1, 2, 3]  # Up, right, down, left
 
@@ -30,9 +37,9 @@ class MeetingGridworld:
         for i in range(self.n_agents):
             while True:
                 if i == 0:
-                    start = (np.random.randint(0, self.size//2), np.random.randint(self.size//2, self.size))
+                    start = (np.random.randint(0, self.size//2-1), np.random.randint(self.size//2+1, self.size))
                 elif i == 1:
-                    start = (np.random.randint(self.size//2, self.size), np.random.randint(0, self.size//2))
+                    start = (np.random.randint(self.size//2+1, self.size), np.random.randint(0, self.size//2-1))
                 else:
                     start = (np.random.randint(0, self.size//2), np.random.randint(0, self.size//2))
 
@@ -57,27 +64,31 @@ class MeetingGridworld:
             new_pos[1] = max(0, new_pos[1] - 1)
 
         # 修改结束条件
-        for agent in self.agents:
+        for i, agent in enumerate(self.agents):
             # 遍历所有agent，如果当前agent不是正在行走的Agent(自己)，
             # 且当前agent的位置和新位置相同，那么当前agent和自己都结束
             if agent != self.agents[agent_idx] and agent['pos'] == tuple(new_pos):
                 self.agents[agent_idx]['pos'] = tuple(new_pos)
                 self.agents[agent_idx]['done'] = True
                 agent['done'] = True
-                reward = 50
+                reward = self.reward_dict[i]['goal']
                 
                 return self.get_state(agent_idx), reward, True
 
         if old_pos == new_pos or self.map[tuple(new_pos)] == 0:  # hit wall or border
-            reward = -10
+            reward = self.reward_dict[agent_idx]['collision']
         else:  # free cell
             self.agents[agent_idx]['pos'] = tuple(new_pos)
-            reward = -2
-            if self.heuristic_reward:
+            reward = self.reward_dict[agent_idx]['step']
+            # if self.heuristic_reward and self.reward_dict[agent_idx]['heuristic']:
+            #     reward += - (np.abs(np.array(new_pos) - np.array(self.end_point))).sum() / self.size
+            if self.heuristic_reward and self.reward_dict[agent_idx]['heuristic']:
                 for agent in self.agents:
                     if agent != self.agents[agent_idx]:
-                        # 两个agent之间的距离越近，reward越大
-                        reward += self.size/(np.abs(np.array(new_pos) - np.array(agent['pos']))).sum()
+                        # 两个agent之间的距离越近，reward越接近0，越远reward越是负数
+                        reward += - (np.abs(np.array(new_pos) - np.array(agent['pos']))).sum() / self.size
+                        # reward += self.size/(np.abs(np.array(new_pos) - np.array(agent['pos']))).sum()
+
 
         return self.get_state(agent_idx), reward, self.agents[agent_idx]['done']
 

@@ -1,3 +1,4 @@
+# %%
 import pickle
 import random
 import heapq
@@ -7,7 +8,7 @@ from matplotlib import pyplot as plt
 
 import random
 import heapq
-
+# %%
 
 def generate_gridworld(n, prob):
     """
@@ -63,34 +64,34 @@ def generate_solvable_gridworld(n, prob=0.6):
             end[1]] == 1 and start != end and optimal_path is not False:
             return gridworld, start, end, optimal_path
 
+# %%
+# if __name__ == '__main__':
+# 示例代码
+gridworld, start, end, optimal_path = generate_solvable_gridworld(17, prob=0.95)
+gridworld = np.array(gridworld) * 1.0
+print(gridworld)
+print("start:", start)
+print("end:", end)
 
-if __name__ == '__main__':
-    # 示例代码
-    gridworld, start, end, optimal_path = generate_solvable_gridworld(16, prob=0.98)
-    gridworld = np.array(gridworld) * 1.0
-    print(gridworld)
-    print("start:", start)
-    print("end:", end)
+plt.imshow(gridworld)
+plt.show()
 
-    plt.imshow(gridworld)
-    plt.show()
+# train_set = {'gridworld': [],
+#              'start': [],
+#              'end': []}
+#
+# test_set = {'gridworld': [],
+#             'start': [],
+#             'end': []}
+#
+# for i in range(6400):
+#     gridworld, start, end = generate_solvable_gridworld(8)
+#     train_set['gridworld'].append(gridworld)
+#     train_set['start'].append(start)
+#     train_set['end'].append(end)
 
-    # train_set = {'gridworld': [],
-    #              'start': [],
-    #              'end': []}
-    #
-    # test_set = {'gridworld': [],
-    #             'start': [],
-    #             'end': []}
-    #
-    # for i in range(6400):
-    #     gridworld, start, end = generate_solvable_gridworld(8)
-    #     train_set['gridworld'].append(gridworld)
-    #     train_set['start'].append(start)
-    #     train_set['end'].append(end)
-
-    # 将字典保存到文件中
-    # with open("gridworld3x3_train_dict.pickle", "wb") as f:
-    #     pickle.dump(train_set, f)
-    np.savetxt('maze16_0.02_5.txt', gridworld)
-    # maze = np.loadtxt('maze32_1.txt')
+# 将字典保存到文件中
+# with open("gridworld3x3_train_dict.pickle", "wb") as f:
+#     pickle.dump(train_set, f)
+# np.savetxt('maze16_0.02_5.txt', gridworld)
+# maze = np.loadtxt('maze32_1.txt')
