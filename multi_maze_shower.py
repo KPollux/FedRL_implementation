@@ -236,14 +236,46 @@ log_agent_paths_length_list = []
 # ]
 
 # 动态难地图、二Agent、不同奖励（对比算法）
+# log_paths = [
+#     './logs/Q_learning_M1720_5flod_0Reward_dynamic_ep5000_2023-06-13-05-55-55/',
+#     './logs/Q_learning_M1720_5flod_0Reward_dynamic_Paramsshare_ep5000_2023-06-13-06-07-53/',
+#     './logs/Q_learning_M1720_5flod_0Reward_dynamic_FL_10LE_ep5000_2023-06-13-06-15-56/',
+#     './logs/Q_learning_M1720_5flod_0Reward_dynamic_FLDelta_10LE_ep5000_2023-06-13-06-27-54/',
+#     './logs/Q_learning_M1720_5flod_0Reward_dynamic_FLMax_10LE_ep5000_2023-06-13-06-39-28/',
+#     './logs/Q_learning_M1720_5flod_0Reward_dynamic_FLAll_10LE_ep5000_2023-06-13-06-49-09/',
+# ]
+
+# # 静态难度地图、三Agent、相同奖励、8ls（文章1）
+# log_paths = [
+#     'Q_learning_M1720_5flod_ep1000_2023-06-18-00-04-04',
+#     'Q_learning_M1720_5flod_Paramsshare_ep1000_2023-06-18-00-04-46',
+#     'Q_learning_M1720_5flod_FL_8LStep_ep1000_2023-06-18-00-05-19',
+#     # 'Q_learning_M1720_5flod_FLDelta_8LStep_ep1000_2023-06-18-00-06-08',
+#     'Q_learning_M1720_5flod_FLMax_8LStep_ep1000_2023-06-18-00-06-53',
+#     # 'Q_learning_M1720_5flod_FLAll_8LStep_ep1000_2023-06-18-00-07-24',
+# ]
+
+# # 静态难度地图、三Agent、相同奖励(无启发式)、8ls（文章1）
+# log_paths = [
+#     'Q_learning_M1720_noHRwd_5flod_ep1000_2023-06-18-00-45-18',
+#     'Q_learning_M1720_noHRwd_5flod_Paramsshare_ep1000_2023-06-18-00-46-01',
+#     'Q_learning_M1720_noHRwd_5flod_FL_8LStep_ep1000_2023-06-18-00-46-33',
+#     # 'Q_learning_M1720_noHRwd_5flod_FLDelta_8LStep_ep1000_2023-06-18-00-47-23',
+#     'Q_learning_M1720_noHRwd_5flod_FLMax_8LStep_ep1000_2023-06-18-00-48-08',
+#     'Q_learning_M1720_noHRwd_5flod_FLAll_8LStep_ep1000_2023-06-18-00-48-37',
+# ]
+
+# 动态难度地图、三Agent、相同奖励(无启发式)、8ls（文章1）
 log_paths = [
-    './logs/Q_learning_M1720_5flod_0Reward_dynamic_ep5000_2023-06-13-05-55-55/',
-    './logs/Q_learning_M1720_5flod_0Reward_dynamic_Paramsshare_ep5000_2023-06-13-06-07-53/',
-    './logs/Q_learning_M1720_5flod_0Reward_dynamic_FL_10LE_ep5000_2023-06-13-06-15-56/',
-    './logs/Q_learning_M1720_5flod_0Reward_dynamic_FLDelta_10LE_ep5000_2023-06-13-06-27-54/',
-    './logs/Q_learning_M1720_5flod_0Reward_dynamic_FLMax_10LE_ep5000_2023-06-13-06-39-28/',
-    './logs/Q_learning_M1720_5flod_0Reward_dynamic_FLAll_10LE_ep5000_2023-06-13-06-49-09/',
+    # 'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_ep1000_2023-06-18-00-50-47',
+    'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_Paramsshare_ep1000_2023-06-18-00-52-57',
+    'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FL_8LStep_ep1000_2023-06-18-00-54-13',
+    # 'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FLDelta_8LStep_ep1000_2023-06-18-00-56-31',
+    'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FLMax_8LStep_ep1000_2023-06-18-00-58-33',
+    'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FLAll_8LStep_ep1000_2023-06-18-00-59-48',
 ]
+for i, path in enumerate(log_paths):
+    log_paths[i] = './logs/' + path + '/'
 
 
 
@@ -259,11 +291,13 @@ for path in log_paths:
     log_agent_paths_length_list.append(temp_log_agent_paths_length_list)
 
 
-n_agents = 2
+n_agents = 3
 EPISODES = 1000
 env_size = 17
-legends = ['IL', 'SQ', 'QAvg', 'QDelta', 'QMax', 'QAll']
+# legends = ['IL', 'SQ', 'QAvg', 'QDelta', 'QMax', 'QAll']
+# legends = ['IL', 'SQ', 'QAvg','QMax', 'QAll']
 # legends = ['5', '10', '20', '50', '100']
+legends = ['SQ', 'QAvg','QMax', 'QAll']
 
 log_agent_rewards_list = np.array(log_agent_rewards_list)
 log_agent_paths_length_list = np.array(log_agent_paths_length_list)
@@ -278,8 +312,8 @@ def tsplot(ax, data, **kw):
     cis = (est - sd * 0.95, est + sd * 0.95)
     ax.fill_between(x, cis[0], cis[1], alpha=0.2, **kw)
     # ax.plot(x, est, **kw)
-    mdata = moving_average(est, 64)
-    line, = ax.plot(mdata, **kw)
+    est = moving_average(est, 64)
+    line, = ax.plot(est, **kw)
     # ax.margins(x=0)
     return line
 
@@ -313,8 +347,8 @@ for i in range(3):
         axs[i].legend()  # 显示图例
     axs[i].tick_params(axis='both', which='major', labelsize=15)
 
-    axs[i].set_xlim([0, 400])
-    axs[i].set_ylim([0, 200])
+    # axs[i].set_xlim([0, 400])
+    # axs[i].set_ylim([0, 200])
 
 # 对每个子图添加图例
 if add_sd:
