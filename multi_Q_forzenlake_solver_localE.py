@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=False, FLdev=False, onlyA=False,
-          FLAll=False, FLdelta=False, floder_name=None, n_times=0, dynamic=False):
+          FLAll=False, FLdelta=False, FLDynamicAvg=False, FLRewardShape=False, floder_name=None, n_times=0, dynamic=False):
     # Hyperparameters
     EPISODES = 50000
     EPSILON = 0.1  # Random rate
@@ -82,7 +82,8 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                         'agent_alives': agent_alives, \
                         'agent_wins': agent_wins}
 
-    deltas_dict = {'episodes': [], 'deltas_1': [], 'deltas_2': [], 'deltas_3': [], 'deltas_global': []}
+    deltas_dict = {'episodes': [], 'deltas_1': [], 'deltas_2': [],
+                    'deltas_3': [], 'deltas_global': [], 'weights': []}
 
     FL_steps = 0
     for i_episode in range(EPISODES):
@@ -218,34 +219,79 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                     for idx in range(env.n_agents):
                         Q_tables[idx] = copy.deepcopy(global_Q)
 
-            # elif FLDynamicAvg:
-            #     if i_episode % FL_LOCAL_EPOCH == 0:
-            #         # 分别计算每个Agent的Q表与全局Q表的差值，得到DeltaQ
-            #         delta_Qs = [Q_tables[i] - global_Q for i in range(env.n_agents)]
-            #         delta_Qs = np.array(delta_Qs)
+            elif FLDynamicAvg:
+                if i_episode % FL_LOCAL_EPOCH == 0:
+                    # Initialize each agent's weight as 1
+                    weights = np.ones(env.n_agents)
 
-            #         # 计算每个位置是否被更新的标记，这里我们利用delta_Qs是否为零来判断
-            #         update_flags = delta_Qs != 0
+                    # Define the starting and ending epsilon values
+                    EPS_START = 1.0
+                    EPS_END = 1.0 / env.n_agents
 
-            #         # 计算更新标记的累计值，得到一个和Q表形状相同的数组，其中每个元素是对应位置的更新次数
-            #         update_counts = np.sum(update_flags, axis=0)
+                    # Define the decay rate
+                    EPS_DECAY = 2500
 
-            #         # 初始化一个全0的更新数组
-            #         update_array = np.zeros_like(global_Q)
+                    # Assuming that `current_round` is the current training round
+                    if i_episode < EPS_DECAY:
+                        epsilon = EPS_START - ((EPS_START - EPS_END) * (i_episode / EPS_DECAY)**2)
+                        # epsilon = EPS_START
+                    else:
+                        epsilon = EPS_END
 
-            #         # 对于每个Agent，如果该Agent在某个位置进行了更新，则在该位置累加该Agent的DeltaQ
-            #         for i in range(env.n_agents):
-            #             update_array += np.where(update_flags[i], delta_Qs[i], 0)
+                    # Adjust the weight of each agent
+                    weights = weights * epsilon
+                    deltas_dict['weights'].append(weights)
 
-            #         # 对于每个位置，如果至少有一个Agent进行了更新，则取累计DeltaQ的平均值；否则，不更新该位置
-            #         update_array = np.where(update_counts > 0, update_array / update_counts, 0)
+                    # Before updating the global Q table, calculate the change rate of each agent's Q table
+                    delta_Qs = [Q_tables[i] - global_Q for i in range(env.n_agents)] 
 
-            #         # 更新全局Q表
-            #         global_Q += update_array
+                    # Then use the adjusted weights to update the global Q table
+                    for i in range(env.n_agents):
+                        global_Q += delta_Qs[i] * weights[i]
 
-            #         # 更新每个Q表
-            #         for idx in range(env.n_agents):
-            #             Q_tables[idx] = copy.deepcopy(global_Q)
+                    # Finally, update each Q table
+                    for idx in range(env.n_agents):
+                        Q_tables[idx] = copy.deepcopy(global_Q)
+
+            elif FLRewardShape:
+                if i_episode == 0 and t == 0:
+                    # 添加计数器
+                    avg_delta_q_counter = np.zeros_like(global_Q)
+                    # 初始化AvgDeltaQ
+                    AvgDeltaQ = np.zeros_like(global_Q)
+
+                if i_episode % FL_LOCAL_EPOCH == 0:
+                    # 计算每个Agent的Q表与全局Q表的差值，得到DeltaQ
+                    delta_Qs = [Q_tables[i] - global_Q for i in range(env.n_agents)]
+
+                    # 创建一个mask，标记哪些值真正发生了更新
+                    update_masks = [dQ != 0 for dQ in delta_Qs]
+
+                    # 对每个位置，如果有更新，则计算平均值
+                    for dQ, mask in zip(delta_Qs, update_masks):
+                        AvgDeltaQ[mask] = (AvgDeltaQ[mask] * avg_delta_q_counter[mask] + dQ[mask]) / (avg_delta_q_counter[mask] + 1)
+                        avg_delta_q_counter[mask] += 1
+
+                    # # 计算当前的平均DeltaQ
+                    # curDeltaQ = sum(delta_Qs) / len(delta_Qs)
+                    # print(np.array((delta_Qs)).shape)
+
+                    # 更新历史平均DeltaQ
+                    # AvgDeltaQ = (AvgDeltaQ * avg_delta_q_counter + curDeltaQ) / (avg_delta_q_counter + 1)
+
+                    # 更新计数器
+                    # avg_delta_q_counter += 1
+
+                    # 将当前的DeltaQ与AvgDeltaQ进行加和
+                    delta_Qs = [(dQ + AvgDeltaQ) / 2 for dQ in delta_Qs]
+
+                    for dQ in delta_Qs:
+                        global_Q += dQ
+
+                    # 更新每个Q表
+                    for idx in range(env.n_agents):
+                        Q_tables[idx] = copy.deepcopy(global_Q)
+
 
             
             elif FLdev:
@@ -300,6 +346,10 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
         floder_name += 'FLMax_' if FLMax else ''
         floder_name += 'FLAll_' if FLAll else ''
         floder_name += 'FLDelta_' if FLdelta else ''
+
+        floder_name += 'FLDynamicAvg_' if FLDynamicAvg else ''
+        floder_name += 'FLRewardShape_' if FLRewardShape else ''
+
         floder_name += 'FLdev_' if FLdev else ''
 
         floder_name += '{}LStep_'.format(FL_LOCAL_EPOCH) if 'FL' in floder_name else ''
@@ -340,13 +390,18 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 
 # %%
 floder_name = None
-for n in range(1):
-    train_history, policy_nets, floder_name = main(  # FLdev=True,
+for n in range(5):
+    train_history, policy_nets, floder_name = main(FLDynamicAvg=True,
                                                 dynamic=False,
                                                 floder_name=floder_name, n_times=n)
 
+# for n in range(5):
+#     train_history, policy_nets, floder_name, deltas_dict = main(FLDynamicAvg=True,
+#                                                 dynamic=False,
+#                                                 floder_name=floder_name, n_times=n)
+
 # %%
-dymnamic = False
+dymnamic = True
 
 floder_name = None
 for n in trange(5):
@@ -367,15 +422,15 @@ for n in trange(5):
     
 floder_name = None
 for n in trange(5):
-    train_history, policy_nets, floder_name = main(FLdelta=True,
+    train_history, policy_nets, floder_name = main(FLDynamicAvg=True,
                                                 dynamic=dymnamic,
                                                 floder_name=floder_name, n_times=n)
 
-floder_name = None
-for n in trange(5):
-    train_history, policy_nets, floder_name = main(FLMax=True,
-                                                dynamic=dymnamic,
-                                                floder_name=floder_name, n_times=n)
+# floder_name = None
+# for n in trange(5):
+#     train_history, policy_nets, floder_name = main(FLMax=True,
+#                                                 dynamic=dymnamic,
+#                                                 floder_name=floder_name, n_times=n)
 
 floder_name = None
 for n in trange(5):
@@ -406,7 +461,7 @@ agent_alives = train_history['agent_alives']
 agent_wins = train_history['agent_wins']
 
 # %%
-draw_history(agent_wins, agent_rewards, n_agents, EPISODES, window_size=64)
+draw_history(agent_wins, agent_rewards, n_agents, EPISODES, window_size=1000)
 agent_paths_length
 
 # %%
@@ -415,10 +470,14 @@ agent_paths_length
 # plt.plot(deltas_dict['deltas_2'])
 # plt.plot(deltas_dict['deltas_global'])
 
-m1 = moving_average(deltas_dict['deltas_1'], 1)
-m2 = moving_average(deltas_dict['deltas_2'], 1)
-m3 = moving_average(deltas_dict['deltas_3'], 1)
-mg = moving_average(deltas_dict['deltas_global'], 1)
+m1 = moving_average(deltas_dict['deltas_1'], 1000)
+m2 = moving_average(deltas_dict['deltas_2'], 1000)
+m3 = moving_average(deltas_dict['deltas_3'], 1000)
+mg = moving_average(deltas_dict['deltas_global'], 1000)
+
+# %%
+
+mavg = np.array(mg)/3
 # plt.ylim(0, 0.004)
 plt.figure(figsize=(10, 7.5))
 # 打开网格
@@ -428,6 +487,8 @@ plt.plot(m1, label='agent1')
 plt.plot(m2, label='agent2')
 plt.plot(m3, label='agent3')
 plt.plot(mg, label='global(add_all)')
+plt.plot(mavg, label='global(add_avg)')
+plt.plot()
 plt.legend()
 
 plt.title('Delta Q with communication rounds')
@@ -437,6 +498,29 @@ plt.ylabel('MAE of delta Q')
 plt.tight_layout()
 plt.show()
 
+
+# %%
+ws1s, ws2s, ws3s = [], [], []
+for ws1, ws2, ws3 in deltas_dict['weights']:
+    ws1s.append(ws1)
+    ws2s.append(ws2)
+    ws3s.append(ws3)
+plt.plot(ws1s)
+# plt.plot(ws2s)
+# plt.plot(ws3s)
+
+
+
+
+# %%
+
+
+# %%
+delta_Qs = [deltas_dict['deltas_1'][0], deltas_dict['deltas_2'][0], deltas_dict['deltas_3'][0]]
+MAEs = [np.mean(np.abs(delta_Q)) for delta_Q in delta_Qs]
+# Normalize MAEs to [0, 1] range
+normalized_MAEs = (MAEs - np.min(MAEs)) / (np.max(MAEs) - np.min(MAEs))
+print(normalized_MAEs)
 
 
 
@@ -603,3 +687,17 @@ for i in range(100):
     a = 0.9*a + 0.1*b + 5
     print(a)
 # %%
+EPS_START = 1
+EPS_END = 1/3
+EPS_DECAY = 5000
+progress = []
+total_rounds = 50000
+for current_round in range(total_rounds):
+    if current_round < EPS_DECAY:
+        epsilon = EPS_START - ((EPS_START - EPS_END) * current_round / EPS_DECAY)
+    else:
+        epsilon = EPS_END
+    progress.append(epsilon)
+
+plt.plot(progress)
+

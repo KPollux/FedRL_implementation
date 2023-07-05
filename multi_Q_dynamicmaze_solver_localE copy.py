@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=False, FLdev=False, onlyA=False,
-          FLAll=False, FLdelta=False, floder_name=None, n_times=0, dynamic=False):
+          FLAll=False, FLdelta=False, FLDynamicAvg=False, floder_name=None, n_times=0, dynamic=False):
     # Hyperparameters
     EPISODES = 1000
     EPSILON = 0.1  # Random rate
@@ -37,17 +37,17 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 
     # Create environment
     n_agents = 3
-    reward_dict=[{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
-                # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
-                {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
-                {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False}
-                ]
+    # reward_dict=[{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
+    #             # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
+    #             {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
+    #             {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False}
+    #             ]
 
-    # reward_dict=[{'step': 0, 'collision': 0, 'goal': 1, 'heuristic': True},
-    #         # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
-    #         {'step': 0, 'collision': 0, 'goal': 1, 'heuristic': True},
-    #         {'step': 0, 'collision': 0, 'goal': 1, 'heuristic': True}
-    #         ]
+    reward_dict=[{'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False},
+            # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
+            {'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False},
+            {'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False}
+            ]
     if dynamic:
         wall_positions=[(16, 9), (15, 9), (14, 12)]
         wall_odds=[0.9, 0.7, 0.6]
@@ -210,34 +210,39 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                     for idx in range(env.n_agents):
                         Q_tables[idx] = copy.deepcopy(global_Q)
 
-            # elif FLDynamicAvg:
-            #     if i_episode % FL_LOCAL_EPOCH == 0:
-            #         # 分别计算每个Agent的Q表与全局Q表的差值，得到DeltaQ
-            #         delta_Qs = [Q_tables[i] - global_Q for i in range(env.n_agents)]
-            #         delta_Qs = np.array(delta_Qs)
+            elif FLDynamicAvg:
+                if i_episode % FL_LOCAL_EPOCH == 0:
+                    # Initialize each agent's weight as 1
+                    weights = np.ones(env.n_agents)
 
-            #         # 计算每个位置是否被更新的标记，这里我们利用delta_Qs是否为零来判断
-            #         update_flags = delta_Qs != 0
+                    # Define the starting and ending epsilon values
+                    EPS_START = 1.0
+                    EPS_END = 1.0 / env.n_agents
 
-            #         # 计算更新标记的累计值，得到一个和Q表形状相同的数组，其中每个元素是对应位置的更新次数
-            #         update_counts = np.sum(update_flags, axis=0)
+                    # Define the decay rate
+                    EPS_DECAY = 1000
 
-            #         # 初始化一个全0的更新数组
-            #         update_array = np.zeros_like(global_Q)
+                    # Assuming that `current_round` is the current training round
+                    if i_episode < EPS_DECAY:
+                        epsilon = EPS_START - ((EPS_START - EPS_END) * (i_episode / EPS_DECAY)**2)
+                        # epsilon = EPS_START
+                    else:
+                        epsilon = EPS_END
 
-            #         # 对于每个Agent，如果该Agent在某个位置进行了更新，则在该位置累加该Agent的DeltaQ
-            #         for i in range(env.n_agents):
-            #             update_array += np.where(update_flags[i], delta_Qs[i], 0)
+                    # Adjust the weight of each agent
+                    weights = weights * epsilon
+                    # deltas_dict['weights'].append(weights)
 
-            #         # 对于每个位置，如果至少有一个Agent进行了更新，则取累计DeltaQ的平均值；否则，不更新该位置
-            #         update_array = np.where(update_counts > 0, update_array / update_counts, 0)
+                    # Before updating the global Q table, calculate the change rate of each agent's Q table
+                    delta_Qs = [Q_tables[i] - global_Q for i in range(env.n_agents)] 
 
-            #         # 更新全局Q表
-            #         global_Q += update_array
+                    # Then use the adjusted weights to update the global Q table
+                    for i in range(env.n_agents):
+                        global_Q += delta_Qs[i] * weights[i]
 
-            #         # 更新每个Q表
-            #         for idx in range(env.n_agents):
-            #             Q_tables[idx] = copy.deepcopy(global_Q)
+                    # Finally, update each Q table
+                    for idx in range(env.n_agents):
+                        Q_tables[idx] = copy.deepcopy(global_Q)
 
             
             elif FLdev:
@@ -281,45 +286,46 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
     #save models
     # name the save floder
 
-    if floder_name is None:
-        prefix = 'Q_learning_M1720_noHRwd_Dynamic_5flod_'
+    # if floder_name is None:
+    #     prefix = 'Q_learning_M1720_noHRwd_5flod_'
 
-        floder_name = prefix  # M17_20_all_delta_
+    #     floder_name = prefix  # M17_20_all_delta_
 
-        floder_name += 'dynamic_' if dynamic else ''
+    #     floder_name += 'dynamic_' if dynamic else ''
         
-        floder_name += 'FL_' if FL else ''
-        floder_name += 'FLMax_' if FLMax else ''
-        floder_name += 'FLAll_' if FLAll else ''
-        floder_name += 'FLDelta_' if FLdelta else ''
-        floder_name += 'FLdev_' if FLdev else ''
+    #     floder_name += 'FL_' if FL else ''
+    #     floder_name += 'FLMax_' if FLMax else ''
+    #     floder_name += 'FLAll_' if FLAll else ''
+    #     floder_name += 'FLDelta_' if FLdelta else ''
+    #     floder_name += 'FLdev_' if FLdev else ''
+    #     floder_name += 'FLDynamicAvg_' if FLDynamicAvg else ''
 
-        floder_name += '{}LStep_'.format(FL_LOCAL_EPOCH) if 'FL' in floder_name else ''
+    #     floder_name += '{}LStep_'.format(FL_LOCAL_EPOCH) if 'FL' in floder_name else ''
 
-        floder_name += 'Paramsshare_' if share_params else ''
+    #     floder_name += 'Paramsshare_' if share_params else ''
 
-        floder_name += 'onlyA_' if onlyA else ''
-        # floder_name += 'role_' if role else ''
-        # floder_name += 'Memoryshare_' if share_memory else ''
+    #     floder_name += 'onlyA_' if onlyA else ''
+    #     # floder_name += 'role_' if role else ''
+    #     # floder_name += 'Memoryshare_' if share_memory else ''
 
-        floder_name += 'ep{}_'.format(EPISODES)
+    #     floder_name += 'ep{}_'.format(EPISODES)
 
-        if floder_name == prefix:
-            floder_name += 'Independent_'
-        floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+    #     if floder_name == prefix:
+    #         floder_name += 'Independent_'
+    #     floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 
-    # create floder
-    if not os.path.exists('./logs/' + floder_name):
-        print('create floder: ', floder_name)
-        os.mkdir('./logs/' + floder_name)
+    # # create floder
+    # if not os.path.exists('./logs/' + floder_name):
+    #     print('create floder: ', floder_name)
+    #     os.mkdir('./logs/' + floder_name)
 
-    for i in range(env.n_agents):
-        # save Q_tables
-        with open('./logs/{}/Q_table_{}_{}.pkl'.format(floder_name, i, n_times), 'wb') as f:
-            pickle.dump(Q_tables[i], f)
+    # for i in range(env.n_agents):
+    #     # save Q_tables
+    #     with open('./logs/{}/Q_table_{}_{}.pkl'.format(floder_name, i, n_times), 'wb') as f:
+    #         pickle.dump(Q_tables[i], f)
     
-    with open('./logs/{}/train_history_{}.pkl'.format(floder_name, n_times), 'wb') as f:
-        pickle.dump(train_history, f)
+    # with open('./logs/{}/train_history_{}.pkl'.format(floder_name, n_times), 'wb') as f:
+    #     pickle.dump(train_history, f)
 
     return train_history, Q_tables, floder_name  # , deltas_dict
 
@@ -333,7 +339,7 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 # %%
 floder_name = None
 for n in range(1):
-    train_history, policy_nets, floder_name = main(  # FLdev=True,
+    train_history, policy_nets, floder_name = main(share_params=True,
                                                 dynamic=False,
                                                 floder_name=floder_name, n_times=n)
 
@@ -399,6 +405,24 @@ agent_paths = train_history['agent_paths']
 draw_history(agent_rewards, agent_paths_length, n_agents, EPISODES, window_size=64)
 agent_paths_length
 
+
+# %%
+# print(np.array(policy_nets).shape)
+
+q_tables = np.array(policy_nets)
+
+# 假设你的Q表存在一个名为q_tables的np数组中
+q_tables = np.random.random((3, 289, 4)) # 这只是一个例子，你应该使用你的真实数据
+
+# 对每个Q表中的最后一个维度（动作）进行argmax操作
+max_actions = np.argmax(q_tables, axis=-1)
+
+# 然后，我们将结果重塑为(3, 17, 17)
+reshaped_max_actions = max_actions.reshape((3, 17, 17))
+
+print(reshaped_max_actions)
+
+
 # %%
 # deltas_dict
 # plt.plot(deltas_dict['deltas_1'])
@@ -426,8 +450,6 @@ plt.ylabel('MAE of delta Q')
 
 plt.tight_layout()
 plt.show()
-
-
 
 
 # %%

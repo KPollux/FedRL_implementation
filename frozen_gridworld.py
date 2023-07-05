@@ -120,7 +120,7 @@ class FrozenLake:
                 if (i, j) == self.end_point:
                     print('G', end=' ')
                 elif self.map[i, j] == 0:
-                    print('W', end=' ')
+                    print('H', end=' ')
                 else:
                     agent_here = [idx for idx, agent in enumerate(self.agents) if agent['pos'] == (i, j)]
                     if agent_here:
@@ -184,7 +184,7 @@ class FrozenLake:
 # np.savetxt('maze_cross.txt', maze_cross, fmt='%f')
 # if __main__():
 
-maze_cross = np.loadtxt('maze_cross_level4.txt')
+maze_cross = np.loadtxt('maze17_0.2.txt')
 
 # %%
 env = FrozenLake(size=17, n_agents=3, heuristic_reward=False, lake=maze_cross, is_slippery=False)
