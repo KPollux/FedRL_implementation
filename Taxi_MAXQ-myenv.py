@@ -9,14 +9,17 @@ import copy
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
+from tqdm import trange
+
+from taxi_grid_world import TaxiEnv
 # %%
 class Agent:
     def __init__(self, env, alpha, gamma):
         self.env = env  # Gym环境对象
         
         not_pr_acts = 2 + 1 + 1 + 1   # gotoS,D + put + get + root (非原子动作数目)
-        nA = env.action_space.n + not_pr_acts  # 动作总数 6+5=11      
-        nS = env.observation_space.n  # 状态空间大小 500
+        nA = env.action_space_n + not_pr_acts  # 动作总数 6+5=11      
+        nS = env.observation_space_n  # 状态空间大小 500
         self.V = np.zeros((nA, nS))  # 价值函数初始化 
         self.C = np.zeros((nA, nS, nA))  # 层次奖励初始化
         self.V_copy = self.V.copy()  # 复制价值函数，用于动作价值的评估
@@ -60,7 +63,7 @@ class Agent:
         self.num_of_ac = 0  # 执行的动作数目
 
         self.t = 0 # 时间步
-        self.max_t = 100 # 最大时间步
+        self.max_t = 512 # 最大时间步
 
     def is_primitive(self, act):
         # 判断给定的动作是否是原子动作（不可再分解的动作）
@@ -71,22 +74,24 @@ class Agent:
 
     def is_terminal(self, a, done):
         # 判断当前的状态是否已经达到了给定的动作的终点
-        RGBY = [(0, 0), (0, 4), (4, 0), (4, 3)]
-        taxirow, taxicol, passidx, destidx = list(self.env.decode(self.env.s))
-        taxiloc = (taxirow, taxicol)
+        # RGBY = self.env.dropoff_locations
+        taxiloc, passloc, destloc = self.env.state
+        # taxiloc = (taxirow, taxicol)
+        # passidx = RGBY.index(passloc)
+        # destidx = RGBY.index(destloc)
         if done:
             return True
         elif a == self.root:
             return done
         elif a == self.put:
-            return passidx < 4  # 如果要放下乘客，乘客在某个地方（不在出租车上），返回终止状态
+            return passloc != "IN_TAXI"  # 如果要放下乘客，乘客在某个地方（不在出租车上），返回终止状态
         elif a == self.get:
-            return passidx >= 4  # 如果要接起乘客，且4 乘客在出租车上，返回终止状态
+            return passloc == "IN_TAXI"  # 如果要接起乘客，且4 乘客在出租车上，返回终止状态
         elif a == self.gotoD:
-            return passidx >= 4 and taxiloc == RGBY[destidx]  # 如果要去到目的地，乘客在出租车上，且出租车在目的地
+            return passloc == "IN_TAXI" and taxiloc == destloc  # 如果要去到目的地，乘客在出租车上，且出租车在目的地
                                                               # 那么就成功送到乘客，返回终止状态
         elif a == self.gotoS:
-            return passidx < 4 and taxiloc == RGBY[passidx]  # 如果要接乘客，乘客在某个地方，且出租车在乘客所在的地方。
+            return passloc != "IN_TAXI" and taxiloc == passloc  # 如果要接乘客，乘客在某个地方，且出租车在乘客所在的地方。
                                                              # 那么就成功接起乘客，返回终止状态
         elif self.is_primitive(a):
             # just else
@@ -130,8 +135,8 @@ class Agent:
             i = 11                  # to end recursion
         self.done = False
         if self.is_primitive(i):
-            self.new_s, r, terminated, truncated, _ = copy.copy(self.env.step(i))
-            self.done = truncated or terminated 
+            self.new_s, r, done, _ = copy.copy(self.env.step(i))
+            self.done = done
             self.t += 1
             if self.t > self.max_t:
                 self.done = True
@@ -164,7 +169,9 @@ class Agent:
 # %%
 alpha = 0.2  # 设置学习率
 gamma = 1  # 设置折扣因子
-env = gym.make('Taxi-v3').env
+maze_cross = np.loadtxt('maze17_0.2.txt')
+# maze_cross = np.loadtxt('mazeTaxi5.txt')
+env = TaxiEnv(maze=maze_cross)
 env.reset()
 # list(env.decode(env.s))
 # env.action_space.n
@@ -173,7 +180,7 @@ env.reset()
 
 # %%
 taxi = Agent(env, alpha, gamma)
-episodes = 5000
+episodes = 15000
 sum_list = []
 for j in range(episodes):
     taxi.reset()

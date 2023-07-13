@@ -13,10 +13,16 @@ class TaxiEnv:
         self.pickup_locations = [(0, 0), (0, maze.shape[1]-1), (maze.shape[0]-1, 0), (maze.shape[0]-1, maze.shape[1]-1)]
         self.dropoff_locations = self.pickup_locations.copy()
 
-        self.num_rows = 17
-        self.num_cols = 17
+        self.num_rows = maze.shape[0]
+        self.num_cols = maze.shape[1]
         self.num_pass_locs = 5  # 4 pickup locations + 1 in taxi
         self.num_dests = 4  # 4 dropoff locations
+
+        self.observation_space = (self.num_rows, self.num_cols, self.num_pass_locs, self.num_dests)
+        self.observation_space_n = np.prod(self.observation_space)
+
+        self.action_space = [_ for _ in range(len(self.ACTIONS))]
+        self.action_space_n = len(self.action_space)
 
     def reset(self):
         while True:
@@ -31,7 +37,7 @@ class TaxiEnv:
 
         self.passenger_location = self.pickup_location
         self.state = (self.current_location, self.passenger_location, self.dropoff_location)
-        return self.state
+        return self.encode(*self.state)  # 默认输出编码后的状态
 
     def step(self, action_index):
         if self.get_done():
@@ -65,25 +71,47 @@ class TaxiEnv:
 
         reward = self.get_reward(self.ACTIONS[action_index], old_state)
         done = self.get_done()
-        return self.state, reward, done, {}
+        return self.encode(*self.state), reward, done, {}
 
     def get_reward(self, action, old_state):
         # 行动暂时没有任何奖励（实际上是-1，但在分支最后）
         # if action in ACTIONS[:4]:
-        reward = -1
+        reward = -0.04
         last_passenger_location = old_state[1]  # 乘客的位置已经被改变了，所以需要记录上一次的位置
-        if action == "PICKUP":
+        # 如果撞墙了，奖励为-10
+        if self.current_location == old_state[0] and action in self.ACTIONS[:4]:
+            reward = -1
+        elif action == "PICKUP":
             if self.current_location == last_passenger_location and last_passenger_location != 'IN_TAXI':  # self.passenger_location:
-                reward = 0  # 正确位置接到乘客，奖励为0
+                reward = 25  # 正确位置接到乘客，奖励为0
             else:
-                reward =  -10  # 错误位置接乘客，奖励为-10
+                reward =  -1  # 错误位置接乘客，奖励为-10
         elif action == "DROPOFF":
             if self.current_location == self.dropoff_location and last_passenger_location == "IN_TAXI":
-                reward = 20  # 正确位置放下乘客，奖励为20
+                reward = 50  # 正确位置放下乘客，奖励为20
             else:
-                reward =  -10  # 错误位置放下乘客，奖励为-10
+                reward =  -1  # 错误位置放下乘客，奖励为-10
         
         return reward
+    
+    # def get_reward(self, action, old_state):
+    #     # 行动暂时没有任何奖励（实际上是-1，但在分支最后）
+    #     # if action in ACTIONS[:4]:
+    #     reward = -1
+    #     last_passenger_location = old_state[1]  # 乘客的位置已经被改变了，所以需要记录上一次的位置
+    #     # 如果撞墙了，奖励为-10
+    #     if action == "PICKUP":
+    #         if self.current_location == last_passenger_location and last_passenger_location != 'IN_TAXI':  # self.passenger_location:
+    #             reward = 0  # 正确位置接到乘客，奖励为0
+    #         else:
+    #             reward =  -10  # 错误位置接乘客，奖励为-10
+    #     elif action == "DROPOFF":
+    #         if self.current_location == self.dropoff_location and last_passenger_location == "IN_TAXI":
+    #             reward = 20  # 正确位置放下乘客，奖励为20
+    #         else:
+    #             reward =  -10  # 错误位置放下乘客，奖励为-10
+        
+    #     return reward
 
 
     def get_done(self):
@@ -93,37 +121,65 @@ class TaxiEnv:
             return False
         
 
-    def encode(self, taxi_row, taxi_col, pass_loc, dest_idx):
-        num_rows = self.num_rows
-        num_cols = self.num_cols
-        num_pass_locs = self.num_pass_locs
-        num_dests = self.num_dests
+    def encode(self, taxi_loc, pass_loc, dest_loc):
+        # 与多维数组类似，加上该维度的偏移量再乘以该维度的长度
+        # ((taxi_row * num_cols + taxi_col) * num_pass_locs + pass_loc) * num_dests + dest_idx
+        num_rows = self.num_cols
+        num_cols = self.num_rows
+        num_pass_locs = len(self.pickup_locations) + 1  # four pickup locations and one in-taxi
+        num_dests = len(self.dropoff_locations)
 
-        i = taxi_row
+        i = taxi_loc[0]  # taxi_row
         i *= num_cols
-        i += taxi_col
+        i += taxi_loc[1]  # taxi_col
         i *= num_pass_locs
-        i += pass_loc
+
+        # Encode passenger location
+        if pass_loc == "IN_TAXI":
+            i += len(self.pickup_locations)  # consider in-taxi as an additional location
+        else:
+            i += self.pickup_locations.index(pass_loc)
+
         i *= num_dests
+        dest_idx = self.dropoff_locations.index(dest_loc)
         i += dest_idx
         return i
+
 
     def decode(self, i):
         num_rows = self.num_rows
         num_cols = self.num_cols
-        num_pass_locs = self.num_pass_locs
-        num_dests = self.num_dests
+        num_pass_locs = len(self.pickup_locations) + 1  # four pickup locations and one in-taxi
+        num_dests = len(self.dropoff_locations)
 
         out = []
-        out.append(i % num_dests)
+
+        # decode
+        dest_idx = i % num_dests
         i = i // num_dests
-        out.append(i % num_pass_locs)
+        pass_loc = i % num_pass_locs
         i = i // num_pass_locs
-        out.append(i % num_cols)
+        
+        taxi_col = i % num_cols
         i = i // num_cols
-        out.append(i)
+        taxi_row = i
         assert 0 <= i < num_rows
-        return reversed(out)
+
+        # Decode taxi location
+        out.append((taxi_row, taxi_col))
+
+        # Decode passenger location
+        if pass_loc == len(self.pickup_locations):  # consider in-taxi as an additional location
+            out.append("IN_TAXI")
+        else:
+            out.append(self.pickup_locations[pass_loc])
+
+        # Decode destination location
+        out.append(self.dropoff_locations[dest_idx])
+
+        # [taxi_loc, pass_loc, dest_loc]
+        return list(out)
+
     
     
     def render(self):
@@ -150,35 +206,44 @@ class TaxiEnv:
             output += '\n'
 
         return output
+    
+    @property
+    def s(self):
+        return self.encode(*self.state)
 
 
-# %%
-maze_cross = np.array([
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1]
-])
-
+# # %%
+# maze_cross = np.array([
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+#     [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+# ])
+maze_cross = np.loadtxt('maze17_0.2.txt')
 env = TaxiEnv(maze_cross)
-# %%
-env.reset()
+# # %%
+state = env.reset()
+# print(state)
+# state_code = env.encode(*state)
+# print(state_code)
+# print(env.decode(state_code))
 
 
-# %%
-print(env.step(5))
+
+# # %%
+# print(env.step(5))
 print(env.render())
 # %%

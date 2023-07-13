@@ -70,14 +70,36 @@ def moving_average(data_list, window_size=100):
 
 # %%
 
-# # 冰冻动态地图、三Agent、相同奖励(无启发式)、8ls（文章1）
+# # Taxi gym env
+# log_paths = [
+#     'Taxi_Q_learning_Independent_ep8_2023-07-03-08-20-45',
+#     'Taxi_Q_learning_ShareQ_ep8_2023-07-03-08-27-22',
+#     'Taxi_Q_learning_FL_ep8_2023-07-03-08-29-42',
+#     'Taxi_Q_learning_FLDynamicAvg_ep8_2023-07-03-09-17-53',
+#     'Taxi_Q_learning_FLAll_ep8_2023-07-03-08-35-17',
+#     # 'Taxi_Q_learning_MAXQ_2023-07-03-09-26-40',
+# ]
+
+# # Taxi5 my env
+# log_paths = [
+#     'Taxi5_Q_learning_Independent_2023-07-09-18-37-06',
+#     'Taxi5_Q_learning_Paramsshare_2023-07-09-18-37-24',
+#     'Taxi5_Q_learning_FLAvg_2023-07-09-18-35-39',
+#     'Taxi5_Q_learning_FLDynamicAvg_2023-07-09-18-36-53',
+#     'Taxi5_Q_learning_FLAll_2023-07-09-18-35-20',
+#     'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
+# ]
+
+# Taxi17 my env
 log_paths = [
-    'Taxi_Q_learning_Independent_ep8_2023-07-03-08-20-45',
-    'Taxi_Q_learning_ShareQ_ep8_2023-07-03-08-27-22',
-    'Taxi_Q_learning_FL_ep8_2023-07-03-08-29-42',
-    'Taxi_Q_learning_FLDynamicAvg_ep8_2023-07-03-09-17-53',
-    'Taxi_Q_learning_FLAll_ep8_2023-07-03-08-35-17',
-    # 'Taxi_Q_learning_MAXQ_2023-07-03-09-26-40',
+    'Taxi17_Q_learning_Independent_2023-07-09-19-01-42',
+    'Taxi17_Q_learning_Paramsshare_2023-07-09-19-00-01',
+    'Taxi17_Q_learning_QAvg_2023-07-09-19-18-36',
+    # 'Taxi17_Q_learning_QDynamicAvg_5000_2023-07-09-19-13-58',
+    # 'Taxi17_Q_learning_QDynamicAvg_10000_2023-07-09-19-05-16',
+    'Taxi17_Q_learning_QDynamicAvg_15000_2023-07-09-19-15-33',
+    'Taxi17_Q_learning_QAll_2023-07-09-19-20-46',
+    # 'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
 ]
 for i, path in enumerate(log_paths):
     log_paths[i] = './logs/' + path + '/'
@@ -113,9 +135,9 @@ for path in log_paths:
 
 
 n_agents = 3
-EPISODES = 5000 # 50000
+EPISODES = 15000 # 50000
 # env_size = 17
-legends = ['INDL', 'SQ', 'QAvg', 'QGradual', 'QAll']  # , 'MAXQ'
+legends = ['INDL', 'SQ', 'QAvg', 'QGradual', 'QAll']#, 'MAXQ']  # 
 # legends = ['IL', 'SQ', 'QAvg','QMax', 'QAll']
 # legends = ['5', '10', '20', '50', '100']
 # legends = ['INDL', 'SQ', 'QAvg', 'QAll']
@@ -304,7 +326,7 @@ ax.legend(legends, fontsize=15)  # , loc='lower center'
 ax.set_ylabel('Normalized AUC')
 ax.set_xticks(ind + width)
 ax.set_xticklabels(agents)
-ax.set_ylim([0.90, 1])
+ax.set_ylim([0.89, 1])
 # ax.set_xlabel('Agents')
 plt.grid(axis='y')
 plt.show()
