@@ -116,12 +116,12 @@ def moving_average(data_list, window_size=100):
 
 # 静态难地图、三Agent、相同奖励（对比算法）
 # log_paths = [
-#     './logs/Q_learning_M1720_5flod_ep1000_2023-06-13-00-33-17/',
-#     './logs/Q_learning_M1720_5flod_Paramsshare_ep1000_2023-06-13-00-33-59/',
-#     './logs/Q_learning_M1720_5flod_FL_10LE_ep1000_2023-06-13-00-34-32/',
-#     './logs/Q_learning_M1720_5flod_FLDelta_10LE_ep1000_2023-06-13-00-35-20/',
-#     './logs/Q_learning_M1720_5flod_FLMax_10LE_ep1000_2023-06-13-00-36-06/',
-#     './logs/Q_learning_M1720_5flod_FLAll_10LE_ep1000_2023-06-13-00-36-41/',
+#     'Q_learning_M1720_5flod_ep1000_2023-06-13-00-33-17/',
+#     # './logs/Q_learning_M1720_5flod_Paramsshare_ep1000_2023-06-13-00-33-59/',
+#     'Q_learning_M1720_5flod_FL_10LE_ep1000_2023-06-13-00-34-32/',
+#     # './logs/Q_learning_M1720_5flod_FLDelta_10LE_ep1000_2023-06-13-00-35-20/',
+#     'Q_learning_M1720_5flod_FLAll_10LE_ep1000_2023-06-13-00-36-41/',
+#     'Q_learning_M1720_5flod_FLMax_10LE_ep1000_2023-06-13-00-36-06/',
 # ]
 
 # 静态难地图、三Agent、相同奖励（调整FLMax的通信轮次）
@@ -135,12 +135,12 @@ def moving_average(data_list, window_size=100):
 
 # # 动态难地图、三Agent、相同奖励（对比算法）
 # log_paths = [
-#     './logs/Q_learning_M1720_5flod_dynamic_ep1000_2023-06-13-02-01-51/',
-#     './logs/Q_learning_M1720_5flod_dynamic_Paramsshare_ep1000_2023-06-13-02-03-29/',
-#     './logs/Q_learning_M1720_5flod_dynamic_FL_10LE_ep1000_2023-06-13-02-04-32/',
-#     './logs/Q_learning_M1720_5flod_dynamic_FLDelta_10LE_ep1000_2023-06-13-02-06-16/',
-#     './logs/Q_learning_M1720_5flod_dynamic_FLMax_10LE_ep1000_2023-06-13-02-07-54/',
-#     './logs/Q_learning_M1720_5flod_dynamic_FLAll_10LE_ep1000_2023-06-13-02-09-24/',
+#     'Q_learning_M1720_5flod_dynamic_ep1000_2023-06-13-02-01-51/',
+#     # './logs/Q_learning_M1720_5flod_dynamic_Paramsshare_ep1000_2023-06-13-02-03-29/',
+#     'Q_learning_M1720_5flod_dynamic_FL_10LE_ep1000_2023-06-13-02-04-32/',
+#     # './logs/Q_learning_M1720_5flod_dynamic_FLDelta_10LE_ep1000_2023-06-13-02-06-16/',
+#     'Q_learning_M1720_5flod_dynamic_FLAll_10LE_ep1000_2023-06-13-02-09-24/',
+#     'Q_learning_M1720_5flod_dynamic_FLMax_10LE_ep1000_2023-06-13-02-07-54/',
 # ]
 
 # 静态难地图、二Agent、不同奖励（对比算法）
@@ -166,7 +166,7 @@ def moving_average(data_list, window_size=100):
 # # 静态难度地图、三Agent、相同奖励、8ls（文章1）
 # log_paths = [
 #     'Q_learning_M1720_5flod_ep1000_2023-06-18-00-04-04',
-#     'Q_learning_M1720_5flod_Paramsshare_ep1000_2023-06-18-00-04-46',
+#     # 'Q_learning_M1720_5flod_Paramsshare_ep1000_2023-06-18-00-04-46',
 #     'Q_learning_M1720_5flod_FL_8LStep_ep1000_2023-06-18-00-05-19',
 #     # 'Q_learning_M1720_5flod_FLDelta_8LStep_ep1000_2023-06-18-00-06-08',
 #     'Q_learning_M1720_5flod_FLMax_8LStep_ep1000_2023-06-18-00-06-53',
@@ -182,45 +182,58 @@ def moving_average(data_list, window_size=100):
 #     'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-18-20-11',  # 衰减500轮
 #     # 'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-19-27-04',  # 衰减1000轮
 #     # 'Q_learning_M1720_noHRwd_5flod_FLMax_8LStep_ep1000_2023-06-18-00-48-08',
-#     'Q_learning_M1720_noHRwd_5flod_FLAll_8LStep_ep1000_2023-06-18-00-48-37',
+#     # 'Q_learning_M1720_noHRwd_5flod_FLAll_8LStep_ep1000_2023-06-18-00-48-37',
+#     # 'Q_learning_M1720_noHRwd_5flod_FLGreedEpsilon_8LStep_ep1000_2023-07-27-00-55-28',
+#     'Q_learning_ER_M1720_noHRwd_5flod_ep1000_2023-08-07-02-37-54',
+#     'Q_learning_M1720_noHRwd_5flod_Independent_DoubleQ_ep1000_2023-08-04-01-39-18',
 # ]
 
 # # 动态难度地图、三Agent、相同奖励(无启发式)、8ls（文章1）
 # log_paths = [
-#     # 'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_ep1000_2023-06-18-00-50-47',
+#     'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_ep1000_2023-06-18-00-50-47',
 #     'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_Paramsshare_ep1000_2023-06-18-00-52-57',
 #     'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FL_8LStep_ep1000_2023-06-18-00-54-13',
 #     # 'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FLDelta_8LStep_ep1000_2023-06-18-00-56-31',
 #     'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FLMax_8LStep_ep1000_2023-06-18-00-58-33',
 #     'Q_learning_M1720_noHRwd_Dynamic_5flod_dynamic_FLAll_8LStep_ep1000_2023-06-18-00-59-48',
+#     'Q_learning_M1720_noHRwd_5flod_dynamic_FLGreedEpsilon_8LStep_ep1000_2023-07-27-02-48-24',
+    
 # ]
 
 # # 冰冻难度地图、三Agent、相同奖励(无启发式)、8ls（文章1）
-log_paths = [
-    'Q_learning_M1720Forzen_noHRwd_5flod_ep50000_2023-06-18-03-07-40',
-    'Q_learning_M1720Forzen_noHRwd_5flod_Paramsshare_ep50000_2023-06-18-03-22-03',
-    'Q_learning_M1720Forzen_noHRwd_5flod_FL_8LStep_ep50000_2023-06-18-03-36-13',
-    # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-13-21',  # 跳变
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-27-02-38-04',  # 衰减2500轮
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-02-51-11', # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-43-33',  # 渐变1阶 5000轮
-    # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-50-13', # 渐变2阶
-    # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-18-25-35',  # 衰减10000轮
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-01-43-30', # 衰减50000轮
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_FLMax_8LStep_ep50000_2023-06-18-04-04-30',
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLAll_8LStep_ep50000_2023-06-18-04-19-31',
-]
-
-# # 冰冻动态地图、三Agent、相同奖励(无启发式)、8ls（文章1）
 # log_paths = [
-#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_ep50000_2023-06-23-22-27-20',
-#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_Paramsshare_ep50000_2023-06-23-22-45-30',
-#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FL_8LStep_ep50000_2023-06-23-23-03-03',
-#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_8LStep_ep50000_2023-06-23-23-19-39',
-#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLAll_8LStep_ep50000_2023-06-23-23-36-20',
-#     # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLRewardShape_8LStep_ep50000_2023-06-24-17-05-50',
-#     # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLRewardShape_8LStep_ep50000_2023-06-24-16-38-18',
-#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLRewardShape_8LStep_ep50000_2023-06-24-00-12-15',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_ep50000_2023-06-18-03-07-40',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_Paramsshare_ep50000_2023-06-18-03-22-03',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FL_8LStep_ep50000_2023-06-18-03-36-13',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-02-51-11', # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-43-33',  # 渐变1阶 5000轮
+#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLMax_8LStep_ep50000_2023-06-18-04-04-30',
+#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLAll_8LStep_ep50000_2023-06-18-04-19-31',
+#     # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-13-21',  # 跳变
+#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-27-02-38-04',  # 衰减2500轮
+#     # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-50-13', # 渐变2阶
+#     # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-18-25-35',  # 衰减10000轮
+#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-01-43-30', # 衰减50000轮
+#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_ep50000_2023-07-27-15-32-30',  # 衰减200轮 - 很慢
+#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_8LStep_ep50000_2023-07-27-15-53-00',  # 衰减5000轮
+#     # 'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_8LStep_ep50000_2023-07-27-16-18-14',  # 衰减15000轮
+#     'Q_learning_ER_M1720Forzen_noHRwd_5flod_ep50000_2023-08-07-02-50-18',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_Independent_DoubleQ_ep50000_2023-08-04-02-10-26'
+    
 # ]
+
+# 冰冻动态地图、三Agent、相同奖励(无启发式)、8ls（文章1）
+log_paths = [
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_ep50000_2023-06-23-22-27-20',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_Paramsshare_ep50000_2023-06-23-22-45-30',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FL_8LStep_ep50000_2023-06-23-23-03-03',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLAll_8LStep_ep50000_2023-06-23-23-36-20',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_8LStep_ep50000_2023-06-23-23-19-39',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLRewardShape_8LStep_ep50000_2023-06-24-17-05-50',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLRewardShape_8LStep_ep50000_2023-06-24-16-38-18',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_FLRewardShape_8LStep_ep50000_2023-06-24-00-12-15',
+    'Q_learning_ER_M1720Forzen_noHRwd_5flod_dynamic_ep50000_2023-08-07-03-22-18',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_Independent_DoubleQ_ep50000_2023-08-04-02-25-40',
+]
 for i, path in enumerate(log_paths):
     log_paths[i] = './logs/' + path + '/'
 
@@ -257,12 +270,18 @@ for path in log_paths:
 n_agents = 3
 EPISODES = 50000# 50000
 env_size = 17
-legends = ['INDL', 'SQ', 'QAvg', 'QGradual', 'QAll']
+# legends = ['INDL', 'SQ', 'QAvg', 'QGradual', 'QAll']
 # legends = ['IL', 'SQ', 'QAvg','QMax', 'QAll']
 # legends = ['5', '10', '20', '50', '100']
 # legends = ['INDL', 'SQ', 'QAvg', 'QAll']
 # legends = ['FL', '5000', '10000', '500000']
+legends = ['Q-Learning', 'SQ', 'QAvg', 'QGradual', 'Q-ER', 'DoubleQ']
+# legends = ['Q-Learning', 'SQ', 'QAvg', 'QGradual', 'DoubleQ']
 
+# legends = ['INDL', 'SQ', 'QAvg', 'QMax', 'QAll', 'FLGreedEpsilon']
+
+
+# %%
 log_agent_rewards_list = np.array(log_agent_rewards_list)
 log_agent_paths_length_list = np.array(log_agent_paths_length_list)
 # log_agent_wins_list = np.array(log_agent_wins_list)
@@ -293,7 +312,7 @@ add_sd = False
 window_size = 6400
 for i in range(3):
     for j in range(len(log_paths)):  # 循环遍历每个test
-        data = copy.deepcopy(log_agent_rewards_list[j, :, i, :40000])
+        data = copy.deepcopy(log_agent_rewards_list[j, :, i, :])
 
         if j == 2:
             data -= 0.3
@@ -317,7 +336,7 @@ for i in range(3):
     axs[i].tick_params(axis='both', which='major', labelsize=15)
 
     # axs[i].set_xlim([0, 400])
-    axs[i].set_ylim([-35, None])
+    # axs[i].set_ylim([-400, None])
 
 # 对每个子图添加图例
 if add_sd:
@@ -368,7 +387,7 @@ for i in range(3):
         # print(data_shifted)
 
         # 计算AUC，并将结果存储到字典中
-        auc = integrate.simps(data_shifted[:40000])  # 使用Simpson积分法
+        auc = integrate.simps(data_shifted[:])  # 使用Simpson积分法
 
         # # 计算每个区间的AUC
         # auc_early = integrate.simps(data_shifted[:10000])  # 计算前10000轮的AUC
@@ -411,13 +430,13 @@ for i in range(len(log_paths)):
     rects = ax.bar(ind + i * width - 0.1, [auc_norm_dict[agent][i] for agent in agents], width)
 
 # 添加图例
-ax.legend(legends, fontsize=15)  # , loc='lower center'
+ax.legend(legends, fontsize=15, loc='lower center')  # , loc='lower center'
 
 # 添加标签和标题
 ax.set_ylabel('Normalized AUC')
 ax.set_xticks(ind + width)
 ax.set_xticklabels(agents)
-ax.set_ylim([0.90, 1])
+ax.set_ylim([0.95, 1])
 # ax.set_xlabel('Agents')
 plt.grid(axis='y')
 plt.show()

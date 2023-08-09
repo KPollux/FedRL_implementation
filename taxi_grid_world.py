@@ -6,7 +6,7 @@ import numpy as np
 
 class TaxiEnv:
 
-    def __init__(self, maze):
+    def __init__(self, maze, fickle=False, allow_collision=True):
         self.ACTIONS = ["UP", "DOWN", "LEFT", "RIGHT", "PICKUP", "DROPOFF"]
 
         self.maze = maze
@@ -24,6 +24,14 @@ class TaxiEnv:
         self.action_space = [_ for _ in range(len(self.ACTIONS))]
         self.action_space_n = len(self.action_space)
 
+        self.fickle = fickle
+        self.reward = -1
+        self.change_flag = False
+
+        # 碰撞
+        self.collision = False
+        self.allow_collision = allow_collision
+
     def reset(self):
         while True:
             self.current_location = (np.random.randint(self.maze.shape[0]), np.random.randint(self.maze.shape[1]))
@@ -37,14 +45,44 @@ class TaxiEnv:
 
         self.passenger_location = self.pickup_location
         self.state = (self.current_location, self.passenger_location, self.dropoff_location)
+
+        self.collision = False
         return self.encode(*self.state)  # 默认输出编码后的状态
 
     def step(self, action_index):
         if self.get_done():
             return self.state, 0, True, {}
+        
+        if self.fickle:
+            # 如果乘客被成功接起，那么在下一轮有概率改变目的地
+            if self.reward == 0:
+                # 如果乘客被成功接起，且没有改变目的地，那么有概率改变目的地
+                self.change_flag = True
+            elif self.change_flag and self.reward == -1 and self.passenger_location == "IN_TAXI":
+                if random.random() < 0.3:
+                    self.dropoff_location = self.dropoff_locations[np.random.randint(len(self.dropoff_locations))]
+                    # while self.dropoff_location == self.pickup_location:
+                        # self.dropoff_location = self.dropoff_locations[np.random.randint(len(self.dropoff_locations))]
+                    self.state = (self.current_location, self.passenger_location, self.dropoff_location)
+                    self.change_flag = False
+            
+            # 如果行动是上下左右，那么有概率改变行动
+            if action_index < 4:
+                # 80%的概率执行原来的行动
+                if random.random() < 0.8:
+                    pass
+                    # action_index = action_index
+                # 10%的概率执行当前行动的左右
+                else:
+                    if action_index in [0, 1]:
+                        action_index = random.choice([2, 3])
+                    else:
+                        action_index = random.choice([0, 1])
+                        
         old_state = self.state
         # 可能不移动
         new_location = self.current_location
+
 
         # 如果移动，更新位置
         if action_index == 0:  # "UP"
@@ -70,51 +108,62 @@ class TaxiEnv:
         self.state = (self.current_location, self.passenger_location, self.dropoff_location)
 
         reward = self.get_reward(self.ACTIONS[action_index], old_state)
+
+        # 检查是否撞墙
+        if self.current_location == old_state[0] and action_index in self.ACTIONS[:4]:
+            self.collision = True
+
         done = self.get_done()
         return self.encode(*self.state), reward, done, {}
 
-    def get_reward(self, action, old_state):
-        # 行动暂时没有任何奖励（实际上是-1，但在分支最后）
-        # if action in ACTIONS[:4]:
-        reward = -0.04
-        last_passenger_location = old_state[1]  # 乘客的位置已经被改变了，所以需要记录上一次的位置
-        # 如果撞墙了，奖励为-10
-        if self.current_location == old_state[0] and action in self.ACTIONS[:4]:
-            reward = -1
-        elif action == "PICKUP":
-            if self.current_location == last_passenger_location and last_passenger_location != 'IN_TAXI':  # self.passenger_location:
-                reward = 25  # 正确位置接到乘客，奖励为0
-            else:
-                reward =  -1  # 错误位置接乘客，奖励为-10
-        elif action == "DROPOFF":
-            if self.current_location == self.dropoff_location and last_passenger_location == "IN_TAXI":
-                reward = 50  # 正确位置放下乘客，奖励为20
-            else:
-                reward =  -1  # 错误位置放下乘客，奖励为-10
-        
-        return reward
-    
     # def get_reward(self, action, old_state):
     #     # 行动暂时没有任何奖励（实际上是-1，但在分支最后）
     #     # if action in ACTIONS[:4]:
-    #     reward = -1
+    #     reward = -0.04
     #     last_passenger_location = old_state[1]  # 乘客的位置已经被改变了，所以需要记录上一次的位置
     #     # 如果撞墙了，奖励为-10
-    #     if action == "PICKUP":
+    #     if self.current_location == old_state[0] and action in self.ACTIONS[:4]:
+    #         reward = -1
+    #     elif action == "PICKUP":
     #         if self.current_location == last_passenger_location and last_passenger_location != 'IN_TAXI':  # self.passenger_location:
-    #             reward = 0  # 正确位置接到乘客，奖励为0
+    #             reward = 25  # 正确位置接到乘客，奖励为0
     #         else:
-    #             reward =  -10  # 错误位置接乘客，奖励为-10
+    #             reward =  -1  # 错误位置接乘客，奖励为-10
     #     elif action == "DROPOFF":
     #         if self.current_location == self.dropoff_location and last_passenger_location == "IN_TAXI":
-    #             reward = 20  # 正确位置放下乘客，奖励为20
+    #             reward = 50  # 正确位置放下乘客，奖励为20
     #         else:
-    #             reward =  -10  # 错误位置放下乘客，奖励为-10
+    #             reward =  -1  # 错误位置放下乘客，奖励为-10
         
     #     return reward
+    
+    def get_reward(self, action, old_state):
+        # 行动暂时没有任何奖励（实际上是-1，但在分支最后）
+        # if action in ACTIONS[:4]:
+        reward = -1
+        last_passenger_location = old_state[1]  # 乘客的位置已经被改变了，所以需要记录上一次的位置
+        # 如果撞墙了，奖励为-10
+        # if self.current_location == old_state[0] and action in self.ACTIONS[:4]:
+        #     reward = -1
+        if action == "PICKUP":
+            if self.current_location == last_passenger_location and last_passenger_location != 'IN_TAXI':  # self.passenger_location:
+                reward = 0  # 正确位置接到乘客，奖励为0
+            else:
+                reward =  -10  # 错误位置接乘客，奖励为-10
+        elif action == "DROPOFF":
+            if self.current_location == self.dropoff_location and last_passenger_location == "IN_TAXI":
+                reward = 20  # 正确位置放下乘客，奖励为20
+            else:
+                reward =  -10  # 错误位置放下乘客，奖励为-10
+        self.reward = reward
+        return reward
 
 
     def get_done(self):
+        if not self.allow_collision:
+            if self.collision:
+                return True
+ 
         if self.passenger_location == self.dropoff_location and self.current_location == self.dropoff_location:
             return True
         else:

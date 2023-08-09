@@ -13,6 +13,9 @@ class FrozenLake:
 
         if reward_dict is not None:
             self.reward_dict = reward_dict
+            if 'collision' in self.reward_dict[0].keys():
+                for i in range(len(self.reward_dict)):
+                    self.reward_dict[i]['fall'] = self.reward_dict[i]['collision']
         else:
              self.reward_dict = [{'step': -1, 'fall': -10, 'goal': 50, 'heuristic': True},
                                 {'step': -1, 'fall': -10, 'goal': 50, 'heuristic': True},

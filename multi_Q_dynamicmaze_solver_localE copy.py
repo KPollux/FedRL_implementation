@@ -23,7 +23,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=False, FLdev=False, onlyA=False,
-          FLAll=False, FLdelta=False, FLDynamicAvg=False, floder_name=None, n_times=0, dynamic=False):
+          FLAll=False, FLdelta=False, FLDynamicAvg=False, FLGreedEpsilon=False, floder_name=None, n_times=0, dynamic=False):
     # Hyperparameters
     EPISODES = 1000
     EPSILON = 0.1  # Random rate
@@ -37,17 +37,17 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 
     # Create environment
     n_agents = 3
-    # reward_dict=[{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
-    #             # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
-    #             {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
-    #             {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False}
-    #             ]
+    reward_dict=[{'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
+                # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
+                {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False},
+                {'step': -1, 'collision': -10, 'goal': 50, 'heuristic': False}
+                ]
 
-    reward_dict=[{'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False},
-            # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
-            {'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False},
-            {'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False}
-            ]
+    # reward_dict=[{'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False},
+    #         # {'step': 0, 'collision': 0, 'goal': 0, 'heuristic': False},
+    #         {'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False},
+    #         {'step': 0, 'collision': -1, 'goal': 10, 'heuristic': False}
+    #         ]
     if dynamic:
         wall_positions=[(16, 9), (15, 9), (14, 12)]
         wall_odds=[0.9, 0.7, 0.6]
@@ -244,6 +244,54 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                     for idx in range(env.n_agents):
                         Q_tables[idx] = copy.deepcopy(global_Q)
 
+            elif FLGreedEpsilon:
+                if i_episode % FL_LOCAL_EPOCH == 0:
+
+                    # 权重衰减
+                    # Initialize each agent's weight as 1
+                    weights = np.ones(env.n_agents)
+
+                    # Define the starting and ending epsilon values
+                    EPS_START = 1.0
+                    EPS_END = 0.0 # 1.0 / env.n_agents
+
+                    # Define the decay rate
+                    EPS_DECAY = 200
+
+                    # Assuming that `current_round` is the current training round
+                    if i_episode < EPS_DECAY:
+                        epsilon = EPS_START - ((EPS_START - EPS_END) * ((i_episode + 1) / EPS_DECAY))
+                        # epsilon = EPS_START
+                    else:
+                        epsilon = EPS_END
+
+                    # Adjust the weight of each agent
+                    weights = weights * epsilon
+                    # deltas_dict['weights'].append(weights)
+
+                    # 计算MaxQ
+                    # 分别计算每个Agent的Q表与全局Q表的差值，得到DeltaQ
+                    delta_Qs = [Q_tables[i] - global_Q for i in range(env.n_agents)]
+                    delta_Qs = np.array(delta_Qs)
+
+                    # 使用np.abs(DeltaQ)获取绝对值数组，然后在第0维上应用argmax函数获取绝对值最大的元素的索引
+                    indices = np.abs(delta_Qs).argmax(axis=0)
+
+                    # 使用np.take_along_axis获取绝对值最大的元素
+                    max_DeltaQs = np.take_along_axis(delta_Qs, indices[np.newaxis, ...], axis=0)  
+                              
+                    # 更新每个Q表
+                    for idx in range(env.n_agents):
+                        Q_tables[idx] = copy.deepcopy(global_Q)
+
+                    # Then use the adjusted weights to update the global Q table
+                    for i in range(env.n_agents):
+                        global_Q += delta_Qs[i] / env.n_agents * (1 - weights[i]) + max_DeltaQs[0] * weights[i]
+
+                    # Finally, update each Q table
+                    for idx in range(env.n_agents):
+                        Q_tables[idx] = copy.deepcopy(global_Q)
+
             
             elif FLdev:
                 if t % FL_LOCAL_EPOCH == 0 and i_episode != 0:
@@ -286,46 +334,47 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
     #save models
     # name the save floder
 
-    # if floder_name is None:
-    #     prefix = 'Q_learning_M1720_noHRwd_5flod_'
+    if floder_name is None:
+        prefix = 'Q_learning_M1720_noHRwd_5flod_'
 
-    #     floder_name = prefix  # M17_20_all_delta_
+        floder_name = prefix  # M17_20_all_delta_
 
-    #     floder_name += 'dynamic_' if dynamic else ''
+        floder_name += 'dynamic_' if dynamic else ''
         
-    #     floder_name += 'FL_' if FL else ''
-    #     floder_name += 'FLMax_' if FLMax else ''
-    #     floder_name += 'FLAll_' if FLAll else ''
-    #     floder_name += 'FLDelta_' if FLdelta else ''
-    #     floder_name += 'FLdev_' if FLdev else ''
-    #     floder_name += 'FLDynamicAvg_' if FLDynamicAvg else ''
+        floder_name += 'FL_' if FL else ''
+        floder_name += 'FLMax_' if FLMax else ''
+        floder_name += 'FLAll_' if FLAll else ''
+        floder_name += 'FLDelta_' if FLdelta else ''
+        floder_name += 'FLdev_' if FLdev else ''
+        floder_name += 'FLDynamicAvg_' if FLDynamicAvg else ''
+        floder_name += 'FLGreedEpsilon_' if FLGreedEpsilon else ''
 
-    #     floder_name += '{}LStep_'.format(FL_LOCAL_EPOCH) if 'FL' in floder_name else ''
+        floder_name += '{}LStep_'.format(FL_LOCAL_EPOCH) if 'FL' in floder_name else ''
 
-    #     floder_name += 'Paramsshare_' if share_params else ''
+        floder_name += 'Paramsshare_' if share_params else ''
 
-    #     floder_name += 'onlyA_' if onlyA else ''
-    #     # floder_name += 'role_' if role else ''
-    #     # floder_name += 'Memoryshare_' if share_memory else ''
+        floder_name += 'onlyA_' if onlyA else ''
+        # floder_name += 'role_' if role else ''
+        # floder_name += 'Memoryshare_' if share_memory else ''
 
-    #     floder_name += 'ep{}_'.format(EPISODES)
+        floder_name += 'ep{}_'.format(EPISODES)
 
-    #     if floder_name == prefix:
-    #         floder_name += 'Independent_'
-    #     floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+        if floder_name == prefix:
+            floder_name += 'Independent_'
+        floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 
-    # # create floder
-    # if not os.path.exists('./logs/' + floder_name):
-    #     print('create floder: ', floder_name)
-    #     os.mkdir('./logs/' + floder_name)
+    # create floder
+    if not os.path.exists('./logs/' + floder_name):
+        print('create floder: ', floder_name)
+        os.mkdir('./logs/' + floder_name)
 
-    # for i in range(env.n_agents):
-    #     # save Q_tables
-    #     with open('./logs/{}/Q_table_{}_{}.pkl'.format(floder_name, i, n_times), 'wb') as f:
-    #         pickle.dump(Q_tables[i], f)
+    for i in range(env.n_agents):
+        # save Q_tables
+        with open('./logs/{}/Q_table_{}_{}.pkl'.format(floder_name, i, n_times), 'wb') as f:
+            pickle.dump(Q_tables[i], f)
     
-    # with open('./logs/{}/train_history_{}.pkl'.format(floder_name, n_times), 'wb') as f:
-    #     pickle.dump(train_history, f)
+    with open('./logs/{}/train_history_{}.pkl'.format(floder_name, n_times), 'wb') as f:
+        pickle.dump(train_history, f)
 
     return train_history, Q_tables, floder_name  # , deltas_dict
 
@@ -337,10 +386,12 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 #                                                 floder_name=floder_name, n_times=n)
 
 # %%
+dymnamic = False
+
 floder_name = None
-for n in range(1):
-    train_history, policy_nets, floder_name = main(share_params=True,
-                                                dynamic=False,
+for n in trange(5):
+    train_history, policy_nets, floder_name = main(FLGreedEpsilon=True,
+                                                dynamic=True,
                                                 floder_name=floder_name, n_times=n)
 
 # %%

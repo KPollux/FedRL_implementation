@@ -223,6 +223,20 @@ $\bar Q \leftarrow \bar Q + \sum_i \Delta Q_{i}$
 
 $Q_i \leftarrow \bar Q$
 
-<br/>
+
 
 $$MAE=\frac{1}{n}\sum^n_j|Q_j^t-Q_j^{t+1}|$$
+
+
+$if\ t\ \% \ E == 0:$
+
+$\ \ \ \ Updata\ V\ and\ C$
+
+$\ \ \ \ Waiting\ for\ Server\ Aggregate$
+
+$\ \ \ \ Download\ latest\ \bar V\ and\ \bar C$
+
+$\ \ \ \ V_{t+1} := \bar V$
+
+
+$\ \ \ \ C_{t+1} := \bar C$

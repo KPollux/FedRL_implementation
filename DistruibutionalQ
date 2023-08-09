@@ -1,0 +1,240 @@
+# %%
+import numpy as np
+
+class GridWorld:
+    def __init__(self, size=17, num_walls=0):
+        self.size = size
+        self.state = np.zeros((size, size))
+        self.agent_pos = (0, 0)
+        self.goal_pos = (size-1, size-1)
+        self.actions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # right, left, down, up
+        self.state_space = size * size
+        self.action_space = len(self.actions)
+
+        self.walls = set()
+        for _ in range(num_walls):
+            while True:
+                wall_pos = (np.random.randint(size), np.random.randint(size))
+                if wall_pos not in [self.agent_pos, self.goal_pos, *self.walls]:
+                    self.walls.add(wall_pos)
+                    break
+
+    def reset(self):
+        self.agent_pos = (0, 0)
+        return self.agent_pos
+
+    def step(self, action):
+        next_pos = (self.agent_pos[0] + self.actions[action][0], self.agent_pos[1] + self.actions[action][1])
+
+        # Check for boundary collision or wall collision
+        if (next_pos[0] < 0 or next_pos[0] >= self.size or 
+            next_pos[1] < 0 or next_pos[1] >= self.size or 
+            next_pos in self.walls):
+            reward = -0.1  # Penalty for hitting a wall or boundary
+            done = False
+        elif next_pos == self.goal_pos:
+            reward = 1
+            done = True
+        else:
+            reward = -0.04
+            done = False
+            self.agent_pos = next_pos  # Only move the agent if it's a valid move
+
+        return self.agent_pos, reward, done
+
+
+    def render(self):
+        for i in range(self.size):
+            for j in range(self.size):
+                if (i, j) == self.agent_pos:
+                    print('A', end=' ')
+                elif (i, j) == self.goal_pos:
+                    print('G', end=' ')
+                elif (i, j) in self.walls:
+                    print('W', end=' ')
+                else:
+                    print('-', end=' ')
+            print()  # Newline for new grid row
+
+
+# %%
+env = GridWorld(size=17)
+env.reset()
+env.render()
+# %%
+print(env.step(0))
+env.render()
+
+# %%
+import matplotlib.pyplot as plt
+from tqdm import trange
+
+def dist_dqn(episodes=1000, epsilon=0.1, gamma=0.99, lr=0.1, n_atoms=51, v_min=-10, v_max=10):
+    # Initialize environment 
+    env = GridWorld(size=8)
+    
+    # Initialize Q-table
+    q_table = np.zeros((env.state_space, env.action_space, n_atoms))
+    
+    # Initialize support
+    delta_z = (v_max - v_min) / (n_atoms - 1)
+    support = np.linspace(v_min, v_max, n_atoms)
+
+    # To store rewards for each episode
+    rewards_per_episode = []
+    success_per_episode = []
+
+    for episode in trange(episodes):
+        state = env.reset()
+        # print(state)
+        state_index = state[0]*env.size + state[1]
+        # print(state_index)
+        
+        done = False
+        cumulative_reward = 0  # Reset cumulative reward for each episode
+        t = 0
+        while not done:
+            if t > 2048:
+                break
+            
+            # print(state)
+            # print(state_index)
+            if np.random.uniform() < epsilon:
+                action = np.random.choice(env.action_space)
+            else:
+                action = np.argmax(np.sum(np.multiply(q_table[state_index], support), axis=1))
+
+            next_state, reward, done = env.step(action)
+            next_state_index = next_state[0]*env.size + next_state[1]
+
+            cumulative_reward += reward  # Add reward to cumulative reward
+
+            target_atoms = np.clip(reward + gamma * support, v_min, v_max)
+            b_j = (target_atoms - v_min) / delta_z
+            l = np.floor(b_j).astype(int)
+            u = np.ceil(b_j).astype(int)
+
+            m_prob = q_table[state_index, action].copy()
+            m_prob_next = np.zeros_like(m_prob)
+
+            for j in range(n_atoms):
+                m_prob_next[l[j]] += m_prob[j] * (u[j] - b_j[j])
+                m_prob_next[u[j]] += m_prob[j] * (b_j[j] - l[j])
+
+            q_table[state_index, action] = m_prob_next
+
+            state = next_state
+            state_index = next_state_index
+
+            t += 1
+
+        success_per_episode.append(reward == 1)
+        # Store cumulative reward for this episode
+        rewards_per_episode.append(cumulative_reward)
+
+    return rewards_per_episode, success_per_episode
+
+
+rewards_per_episode, success_per_episode = dist_dqn()
+# %%
+# Plot rewards per episode
+plt.plot(rewards_per_episode)
+plt.xlabel('Episode')
+plt.ylabel('Cumulative reward')
+plt.show()
+
+# Plot success per episode
+plt.plot(success_per_episode)
+plt.xlabel('Episode')
+plt.ylabel('Success')
+plt.show()
+# %%
+sum(success_per_episode)
+# print(sum(success_per_episode))
+
+# %%
+import numpy as np
+from scipy.stats import norm
+import random
+from tqdm import trange
+import matplotlib.pyplot as plt
+
+class DistributionalQLearner:
+    def __init__(self, actions, gamma=0.9, atoms=51):
+        self.actions = actions
+        self.gamma = gamma
+        self.atoms = atoms
+        
+        # Distributional Q function stored as probabilities for atoms
+        self.Q = {}
+        
+    def get_distribution(self, state, action):
+        if (state, action) not in self.Q:
+            self.Q[(state, action)] = np.ones(self.atoms) / self.atoms
+        return self.Q[(state, action)]
+    
+    def distribution_to_q(self, distribution):
+        q = np.sum(distribution * np.linspace(-10, 10, self.atoms))
+        return q
+        
+    def update(self, state, action, reward, next_state):
+        next_distribution = self.get_distribution(next_state, np.argmax(
+            [self.distribution_to_q(self.get_distribution(next_state, a)) 
+             for a in self.actions]))
+        
+        target_distribution = reward + self.gamma * next_distribution
+        
+        current_distribution = self.get_distribution(state, action)
+        current_q = self.distribution_to_q(current_distribution)
+        
+        target_q = self.distribution_to_q(target_distribution)
+        
+        # Projected distribution Bellman update
+        new_distribution = np.copy(current_distribution)
+        for k in range(self.atoms):
+            Tz = min(10, max(-10, (k - current_q) / 20))
+            b = target_distribution[k]
+            new_distribution[k] = np.sum(current_distribution * norm.pdf(Tz - np.linspace(-10, 10, self.atoms)) * b)
+            
+        self.Q[(state, action)] = new_distribution
+
+
+
+def select_action(q_learner, state, epsilon=0.1):
+    if random.random() < epsilon:
+        return random.choice(q_learner.actions)
+    else:
+        Q_vals = [q_learner.distribution_to_q(q_learner.get_distribution(state, a))
+                  for a in q_learner.actions]
+        return q_learner.actions[np.argmax(Q_vals)]
+
+# Usage
+env = GridWorld(size=5)
+actions = range(env.action_space)
+episodes = trange(1000)
+
+q_learner = DistributionalQLearner(actions)
+
+rewards = []
+
+for episode in episodes:
+    state = env.reset()
+    
+    e_rewards = 0
+    while True:
+        action = select_action(q_learner, state)
+        
+        next_state, reward, done = env.step(action)
+        e_rewards += reward
+        q_learner.update(state, action, reward, next_state)
+        
+        state = next_state
+        
+        if done:
+            break
+    rewards.append(e_rewards)
+
+plt.plot(rewards)
+plt.show()
+
+# %%

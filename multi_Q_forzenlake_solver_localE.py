@@ -23,7 +23,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=False, FLdev=False, onlyA=False,
-          FLAll=False, FLdelta=False, FLDynamicAvg=False, FLRewardShape=False, floder_name=None, n_times=0, dynamic=False):
+          FLAll=False, FLdelta=False, FLDynamicAvg=False, FLRewardShape=False,
+          FLGreedEpsilon=False, floder_name=None, n_times=0, dynamic=False):
     # Hyperparameters
     EPISODES = 50000
     EPSILON = 0.1  # Random rate
@@ -292,7 +293,53 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                     for idx in range(env.n_agents):
                         Q_tables[idx] = copy.deepcopy(global_Q)
 
+            elif FLGreedEpsilon:
+                if i_episode % FL_LOCAL_EPOCH == 0:
 
+                    # 权重衰减
+                    # Initialize each agent's weight as 1
+                    weights = np.ones(env.n_agents)
+
+                    # Define the starting and ending epsilon values
+                    EPS_START = 1.0
+                    EPS_END = 0.0 # 1.0 / env.n_agents
+
+                    # Define the decay rate
+                    EPS_DECAY = 15000
+
+                    # Assuming that `current_round` is the current training round
+                    if i_episode < EPS_DECAY:
+                        epsilon = EPS_START - ((EPS_START - EPS_END) * ((i_episode + 1) / EPS_DECAY))
+                        # epsilon = EPS_START
+                    else:
+                        epsilon = EPS_END
+
+                    # Adjust the weight of each agent
+                    weights = weights * epsilon
+                    # deltas_dict['weights'].append(weights)
+
+                    # 计算MaxQ
+                    # 分别计算每个Agent的Q表与全局Q表的差值，得到DeltaQ
+                    delta_Qs = [Q_tables[i] - global_Q for i in range(env.n_agents)]
+                    delta_Qs = np.array(delta_Qs)
+
+                    # 使用np.abs(DeltaQ)获取绝对值数组，然后在第0维上应用argmax函数获取绝对值最大的元素的索引
+                    indices = np.abs(delta_Qs).argmax(axis=0)
+
+                    # 使用np.take_along_axis获取绝对值最大的元素
+                    max_DeltaQs = np.take_along_axis(delta_Qs, indices[np.newaxis, ...], axis=0)  
+                              
+                    # 更新每个Q表
+                    for idx in range(env.n_agents):
+                        Q_tables[idx] = copy.deepcopy(global_Q)
+
+                    # Then use the adjusted weights to update the global Q table
+                    for i in range(env.n_agents):
+                        global_Q += delta_Qs[i] / env.n_agents * (1 - weights[i]) + max_DeltaQs[0] * weights[i]
+
+                    # Finally, update each Q table
+                    for idx in range(env.n_agents):
+                        Q_tables[idx] = copy.deepcopy(global_Q)
             
             elif FLdev:
                 if t % FL_LOCAL_EPOCH == 0 and i_episode != 0:
@@ -349,6 +396,7 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 
         floder_name += 'FLDynamicAvg_' if FLDynamicAvg else ''
         floder_name += 'FLRewardShape_' if FLRewardShape else ''
+        floder_name += 'FLGreedEpsilon_' if FLGreedEpsilon else ''
 
         floder_name += 'FLdev_' if FLdev else ''
 
@@ -390,8 +438,8 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 
 # %%
 floder_name = None
-for n in range(5):
-    train_history, policy_nets, floder_name = main(FLDynamicAvg=True,
+for n in trange(5):
+    train_history, policy_nets, floder_name = main(FLGreedEpsilon=True,
                                                 dynamic=False,
                                                 floder_name=floder_name, n_times=n)
 

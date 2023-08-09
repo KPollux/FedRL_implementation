@@ -90,15 +90,63 @@ def moving_average(data_list, window_size=100):
 #     'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
 # ]
 
-# Taxi17 my env
+# Taxi17 my env QLearning
+# log_paths = [
+#     'Taxi17_Q_learning_Independent_2023-07-09-19-01-42',
+#     'Taxi17_Q_learning_Paramsshare_2023-07-09-19-00-01',
+#     'Taxi17_Q_learning_QAvg_2023-07-09-19-18-36',
+#     # 'Taxi17_Q_learning_QDynamicAvg_5000_2023-07-09-19-13-58',
+#     # 'Taxi17_Q_learning_QDynamicAvg_10000_2023-07-09-19-05-16',
+#     'Taxi17_Q_learning_QDynamicAvg_15000_2023-07-09-19-15-33',
+#     'Taxi17_Q_learning_QAll_2023-07-09-19-20-46',
+#     # 'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
+# ]
+
+# Taxi8 my env MaxQ my reward
+# log_paths = [
+#     'Taxi8_MaxQ-0_Independent_2023-07-19-23-39-54',
+#     'Taxi8_MaxQ-0_ShareQ_2023-07-19-23-41-58',
+#     'Taxi8_MaxQ-0_FL_2023-07-19-23-44-00',
+#     # 'Taxi17_Q_learning_QDynamicAvg_5000_2023-07-09-19-13-58',
+#     # 'Taxi17_Q_learning_QDynamicAvg_10000_2023-07-09-19-05-16',
+#     'Taxi8_MaxQ-0_FLDynamicAvg_2023-07-19-23-45-47',
+#     'Taxi8_MaxQ-0_FLAll_2023-07-19-23-45-13',
+#     # 'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
+# ]
+
+# # Taxi8 my env MaxQ ori reward
+# log_paths = [
+#     'Taxi8_MaxQ-0_ori_R_Independent_2023-07-20-11-33-05',
+#     'Taxi8_MaxQ-0_ori_R_Paramsshare_2023-07-20-11-33-48',
+#     'Taxi8_MaxQ-0_ori_R_FLAvg_2023-07-20-11-35-59',
+#     # 'Taxi17_Q_learning_QDynamicAvg_5000_2023-07-09-19-13-58',
+#     # 'Taxi17_Q_learning_QDynamicAvg_10000_2023-07-09-19-05-16',
+#     'Taxi8_MaxQ-0_ori_R_FLDynamicAvg_2023-07-20-11-37-11',
+#     'Taxi8_MaxQ-0_ori_R_FLAll_2023-07-20-11-34-43',
+#     # 'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
+# ]
+
+# # Taxi5 Fickle my env MaxQ ori reward
+# log_paths = [
+#     'Taxi5_Fickle_MaxQ-0_Independent_2023-07-20-11-44-53',
+#     'Taxi5_Fickle_MaxQ-0_Paramsshare_2023-07-20-11-45-23',
+#     'Taxi5_Fickle_MaxQ-0_FL_2023-07-20-11-46-32',
+#     # 'Taxi17_Q_learning_QDynamicAvg_5000_2023-07-09-19-13-58',
+#     # 'Taxi17_Q_learning_QDynamicAvg_10000_2023-07-09-19-05-16',
+#     'Taxi5_Fickle_MaxQ-0_FLDynamicAvg_2023-07-20-11-45-56',
+#     'Taxi5_Fickle_MaxQ-0_FLAll_2023-07-20-11-46-56',
+#     # 'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
+# ]
+
+# Taxi5 Fickle my env MaxQ ori reward no collision
 log_paths = [
-    'Taxi17_Q_learning_Independent_2023-07-09-19-01-42',
-    'Taxi17_Q_learning_Paramsshare_2023-07-09-19-00-01',
-    'Taxi17_Q_learning_QAvg_2023-07-09-19-18-36',
+    'Taxi5_Fickle_no_collision_MaxQ-0_Independent_2023-07-20-23-07-36',
+    'Taxi5_Fickle_no_collision_MaxQ-0_Paramsshare_2023-07-20-23-09-12',
+    'Taxi5_Fickle_no_collision_MaxQ-0_FL_2023-07-20-23-10-00',
     # 'Taxi17_Q_learning_QDynamicAvg_5000_2023-07-09-19-13-58',
     # 'Taxi17_Q_learning_QDynamicAvg_10000_2023-07-09-19-05-16',
-    'Taxi17_Q_learning_QDynamicAvg_15000_2023-07-09-19-15-33',
-    'Taxi17_Q_learning_QAll_2023-07-09-19-20-46',
+    'Taxi5_Fickle_no_collision_MaxQ-0_FLDynamicAvg_2023-07-20-23-11-13',
+    'Taxi5_Fickle_no_collision_MaxQ-0_FLAll_2023-07-20-23-12-24',
     # 'Taxi5_Q_learning_MAXQ_2023-07-09-18-38-04',
 ]
 for i, path in enumerate(log_paths):
@@ -134,8 +182,8 @@ for path in log_paths:
     # log_agent_wins_list.append(temp_log_agent_wins_list)
 
 
-n_agents = 3
-EPISODES = 15000 # 50000
+n_agents = 2
+EPISODES = 5000 # 50000
 # env_size = 17
 legends = ['INDL', 'SQ', 'QAvg', 'QGradual', 'QAll']#, 'MAXQ']  # 
 # legends = ['IL', 'SQ', 'QAvg','QMax', 'QAll']
@@ -159,7 +207,8 @@ for i in range(5):
         train_history = pickle.load(f)
         temp_log_agent_rewards_list.append(train_history['agent_rewards'])
     # log_agent_rewards_list.append(temp_log_agent_rewards_list)
-
+    if len(temp_log_agent_rewards_list[0].shape) == 1:
+        temp_log_agent_rewards_list[0] = temp_log_agent_rewards_list[0].reshape(-1, 1)
     log_agent_rewards_list.append(temp_log_agent_rewards_list[0].mean(axis=1))
 
 # INDL = temp_log_agent_rewards_list[0].mean(axis=1)
@@ -227,7 +276,7 @@ for i in range(1):
     axs.tick_params(axis='both', which='major', labelsize=15)
 
     # axs[i].set_xlim([0, 400])
-    # axs.set_ylim([-35, None])
+    # axs.set_ylim([-100, None])
 
 # 对每个子图添加图例
 if add_sd:
@@ -326,7 +375,7 @@ ax.legend(legends, fontsize=15)  # , loc='lower center'
 ax.set_ylabel('Normalized AUC')
 ax.set_xticks(ind + width)
 ax.set_xticklabels(agents)
-ax.set_ylim([0.89, 1])
+ax.set_ylim([0.85, 1])
 # ax.set_xlabel('Agents')
 plt.grid(axis='y')
 plt.show()

@@ -152,7 +152,7 @@ class Agent:
         self.num_of_ac = 0  # 执行的动作数目
 
         self.atomic_action_count = 0
-        self.step_generator = self.MAXQ_generator()
+        # self.step_generator = self.MAXQ_generator()
 
         self.t = 0 # 时间步
         self.max_t = 512 # 最大时间步
@@ -210,7 +210,7 @@ class Agent:
 
     def greed_act(self, act, s):
         # 采用 ε-greedy 策略选择动作
-        e = 0.1
+        e = 0.01
         Q = np.arange(0)
         possible_a = np.arange(0)
         for act2 in self.graph[act]:  # 对于所有子节点
@@ -229,50 +229,36 @@ class Agent:
             return np.random.choice(possible_a)
         else:
             return possible_a[max_arg]
-
-    def MAXQ_step(self, i, s, FL_LOCAL_STEP=8):
-        self.FL_LOCAL_STEP = FL_LOCAL_STEP
-
+        
+    def MAXQ_0(self, i, s):
         # MAXQ递归
         if self.done:
             i = 11                  # to end recursion
-            return 0
         self.done = False
         if self.is_primitive(i):
-            if self.t > self.max_t:
-                self.done = True
-                return 0
             self.new_s, r, done, _ = copy.copy(self.env.step(i))
             self.done = done
             self.t += 1
+            if self.t > self.max_t:
+                self.done = True
             self.r_sum += r
             self.num_of_ac += 1
             self.V[i, s] += self.alpha * (r - self.V[i, s])
-            self.atomic_action_count += 1
             return 1
         elif i <= self.root:
             count = 0
+            # 如果是可分解动作，递归计算（往下找子节点）
             while not self.is_terminal(i, self.done):
+                # 选择动作
                 a = self.greed_act(i, s)
-                self.log.action_history.append(a)
-                self.log.state_history.append(self.env.state)
-                N = self.MAXQ_step(a, s)
+                # 递归计算
+                N = self.MAXQ_0(a, s)
                 self.V_copy = self.V.copy()
                 evaluate_res = self.evaluate(i, self.new_s)
                 self.C[i, s, a] += self.alpha * (self.gamma ** N * evaluate_res - self.C[i, s, a])
                 count += N
                 s = self.new_s
             return count
-
-    def MAXQ_generator(self):
-        while True:
-            self.MAXQ_step(self.root, self.new_s)
-            if self.atomic_action_count >= self.FL_LOCAL_STEP:
-                yield self.C, self.V
-                self.atomic_action_count = 0
-
-    def step(self):
-        return next(self.step_generator)
 
     def reset(self):
         # 重置环境
@@ -282,24 +268,24 @@ class Agent:
         self.done = False
         self.new_s = copy.copy(self.env.s)
         self.t = 0
-        self.step_generator = self.step_generator = self.MAXQ_generator()
+        # self.step_generator = self.step_generator = self.MAXQ_generator()
 
 
 # %%
-alpha = 0.1  # 设置学习率
-gamma = 1  # 设置折扣因子
+alpha = 0.8  # 设置学习率
+gamma = 0.999  # 设置折扣因子
 # maze_cross = np.loadtxt('maze8n_1.txt')
 # maze_cross = np.loadtxt('maze17_0.2.txt')
 maze_cross = np.loadtxt('maze_cross_level4.txt') * 0.0 + 1.0
 env = TaxiEnv
 FL = False
 ShareQ = False
-FL_LOCAL_STEP = 8
+FL_LOCAL_STEP = 1
 MAX_LOCAL_STEP = 512
 NUMBER_OF_AGENTS = 1
-training_episodes = 100000
+training_episodes = 5000
 
-server = FLServer(env(maze_cross), aggregation_method='QAvg')
+server = FLServer(env(maze_cross), aggregation_method='QAll')
 agents = [Agent(env(maze_cross), server, alpha, gamma) for _ in range(NUMBER_OF_AGENTS)] 
 
 agent_rewards = []
@@ -332,7 +318,8 @@ for i in trange(training_episodes):
             #     agent.step(FL_LOCAL_STEP)
             # else:
             #     agent.step(MAX_LOCAL_STEP - t)
-            agent.step()  # 如果不加以限制，就是一直运行到终止状态
+            agent.env.reset()
+            agent.MAXQ_0(10, agent.env.s)  # 如果不加以限制，就是一直运行到终止状态
 
         # if all(agent.update_count % FL_LOCAL_STEP == 0 for agent in agents):
         if t % FL_LOCAL_STEP == 0 and FL:
