@@ -93,7 +93,7 @@ agent_num = 3
 device = torch.device("cuda:0")
 
 modes = ['INDL', 'ShareParameter', 'QAvg', 'QGradual']
-mode = modes[3]
+mode = modes[1]
 print(mode)
 
 LOCAL_EPISODES = 8
@@ -105,7 +105,7 @@ n_actions = envs[0].action_space.shape[0]
 agents = [DDPG(
     "MlpPolicy",
     envs[i],
-    # action_noise=NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions)),
+    action_noise=NormalActionNoise(mean=np.zeros(n_actions), sigma=0.1 * np.ones(n_actions)),
     verbose=0,
     device = device,
     train_freq = 1,
@@ -124,7 +124,9 @@ for idx in range(agent_num):
     train_history[idx] = {'agent_rewards':[], 'steps':[]}
 
 # %%
-global_weights = agents[0].policy.state_dict()
+import copy
+
+global_weights = copy.deepcopy(agents[0].policy.state_dict())
 # FL设定中，每个agent应该从相同的起点开始训练
 for agent in agents:
     agent.policy.load_state_dict(global_weights)
@@ -146,7 +148,7 @@ elif mode == 'ShareParameter':
             agent.learn(total_timesteps=LOCAL_EPISODES, log_interval=1, reset_num_timesteps=False,
                          callback=RewardLoggerCallback(i, train_history))
             # 每次训练后，将agent的参数设置为全局参数，同步给其他agent
-            global_weights = agent.policy.state_dict()
+            global_weights = copy.deepcopy(agent.policy.state_dict())
 
 elif mode == 'QAvg':
     for _ in trange(math.ceil(300_000/LOCAL_EPISODES)):
@@ -193,8 +195,8 @@ elif mode == 'QGradual':
         EPS_END = 1.0 / num_selected_agent
 
         # Define the decay rate
-        EPS_DECAY = math.ceil(300_000/LOCAL_EPISODES)
-        # EPS_DECAY = math.ceil(300/LOCAL_EPISODES/3)
+        # EPS_DECAY = 0
+        EPS_DECAY = math.ceil(math.ceil(30_000/LOCAL_EPISODES))
 
         # Assuming that `current_round` is the current training round
         if i_communication < EPS_DECAY:
@@ -209,7 +211,7 @@ elif mode == 'QGradual':
         for i in range(num_selected_agent):
             d_para = {}
             for key in upload_weights[0].keys():
-                d_para[key] = global_weights[key] - upload_weights[i][key]
+                d_para[key] = upload_weights[i][key] - global_weights[key]
 
                 delta_weights[key] = delta_weights.get(key, 0) + avg_weights[i] * d_para[key]
 
@@ -219,7 +221,7 @@ elif mode == 'QGradual':
 
         # 将平均后的差值加回到全局权重中，得到新的全局模型权重
         for key in upload_weights[0].keys():
-            global_weights[key] = global_weights[key] - delta_weights[key]
+            global_weights[key] = global_weights[key] + delta_weights[key]
                
 
 # %%
@@ -255,21 +257,36 @@ with open('./logs/{}/train_history.pkl'.format(floder_name), 'wb') as f:
 
 # %%
 # 读取训练历史
-# floder_name = 'DDPG_HalfCheetah_QGradual_1_2023-08-14-15-12-13'
-# floder_name = 'DDPG_HalfCheetah_QAvg_2023-08-14-02-35-50'
-floder_name = 'DDPG_HalfCheetah_ShareParameter_2023-08-13-20-41-57'
-# floder_name = 'DDPG_HalfCheetah_QGradual_0_2023-08-14-18-59-49'
-# floder_name = 'DDPG_HalfCheetah_QGradual_1_2023-08-14-15-12-13'
+# floder_name = 'DDPG_HalfCheetah_1step_INDL_2023-08-15-01-15-14'
+# floder_name = 'DDPG_HalfCheetah_1step_QAvg_2023-08-15-02-25-34'
+# floder_name = 'DDPG_HalfCheetah_1step_ShareParameter_2023-08-15-02-16-50'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_0_2023-08-15-03-32-54'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_0_2023-08-15-05-32-14'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_37500_2023-08-15-05-32-43'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_0_2023-08-15-11-48-47'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_6250_2023-08-15-11-24-00'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_3750_2023-08-15-13-09-00'
 with open('./logs/{}/train_history.pkl'.format(floder_name), 'rb') as f:
     train_history = pickle.load(f)
 
 agent_num = 3
 
+# plt.ylim(-1000, 6000)
+plt.xlabel('Thousands of Frames')
+plt.ylabel('Average Reward')
+plt.title('DDPGSharePara' + ' ' + 'HalfCheetah-v3')
+
+
 for idx in range(agent_num):
     idx = str(idx)
     # 在每一个step上求历史平均值
-    train_history[idx]['avg_rewards'] = np.array(train_history[idx]['agent_rewards']).cumsum() / np.arange(1, len(train_history[idx]['agent_rewards']) + 1)
+    avg_1000 = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
+    # train_history[idx]['avg_rewards'] = np.array(train_history[idx]['agent_rewards']).cumsum() / np.arange(1, len(train_history[idx]['agent_rewards']) + 1)
+    train_history[idx]['avg_rewards'] = avg_1000.cumsum() / np.arange(1, len(train_history[idx]['agent_rewards'])/1000 + 1)
+    
     plt.plot(train_history[idx]['avg_rewards'], label=f'agent_{idx}')
+plt.legend()
+plt.show()
 
 # %%
 # %%
