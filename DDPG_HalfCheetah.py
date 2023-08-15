@@ -253,11 +253,9 @@ with open('./logs/{}/train_history.pkl'.format(floder_name), 'wb') as f:
 
 # %%
 # 读取训练历史
-# floder_name = 'DDPG_HalfCheetah_QGradual_1_2023-08-14-15-12-13'
-# floder_name = 'DDPG_HalfCheetah_QAvg_2023-08-14-02-35-50'
-floder_name = 'DDPG_HalfCheetah_ShareParameter_2023-08-13-20-41-57'
-# floder_name = 'DDPG_HalfCheetah_QGradual_0_2023-08-14-18-59-49'
-# floder_name = 'DDPG_HalfCheetah_QGradual_1_2023-08-14-15-12-13'
+# floder_name = 'DDPG_HalfCheetah_1step_INDL_2023-08-15-01-15-14'
+# floder_name = 'DDPG_HalfCheetah_1step_QAvg_2023-08-15-02-25-34'
+floder_name = 'DDPG_HalfCheetah_1step_ShareParameter_2023-08-15-02-16-50'
 with open('./logs/{}/train_history.pkl'.format(floder_name), 'rb') as f:
     train_history = pickle.load(f)
 
@@ -266,7 +264,10 @@ agent_num = 3
 for idx in range(agent_num):
     idx = str(idx)
     # 在每一个step上求历史平均值
-    train_history[idx]['avg_rewards'] = np.array(train_history[idx]['agent_rewards']).cumsum() / np.arange(1, len(train_history[idx]['agent_rewards']) + 1)
+    avg_1000 = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
+    # train_history[idx]['avg_rewards'] = np.array(train_history[idx]['agent_rewards']).cumsum() / np.arange(1, len(train_history[idx]['agent_rewards']) + 1)
+    train_history[idx]['avg_rewards'] = avg_1000.cumsum() / np.arange(1, len(train_history[idx]['agent_rewards'])/1000 + 1)
+
     plt.plot(train_history[idx]['avg_rewards'], label=f'agent_{idx}')
 
 # %%
