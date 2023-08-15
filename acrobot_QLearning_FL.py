@@ -27,7 +27,8 @@ if is_ipython:
 plt.ion()
 
 # if GPU is to be used
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1")
 
 # %%
 Transition = namedtuple('Transition',
@@ -69,7 +70,7 @@ class FLServer:
     def __init__(self, env, agents, cfg, condition):
         self.cfg = cfg
         self.env = env
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device
         self.n_actions = env.action_space.n
         state, _ = env.reset()
         self.n_observations = len(state)
@@ -195,7 +196,7 @@ class DQNAgent:
         self.cfg = cfg
         self.env = env
         self.id = id
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device
         self.n_actions = env.action_space.n
         state, _ = env.reset()
         self.n_observations = len(state)
@@ -364,7 +365,7 @@ cfg.local_step = 8
 cfg.ShareQ = False
 cfg.FL = True
 METHODS = ['FedAvg', 'FedGradual']
-cfg.aggregation_method = METHODS[1]
+cfg.aggregation_method = METHODS[0]
 
 
 
@@ -402,8 +403,8 @@ else:
 # agent = DQNAgent(gym.make("CartPole-v1"), cfg)
 # agent.train(num_episodes)
 condition = asyncio.Condition()
-agents = [DQNAgent(gym.make("CartPole-v1"), cfg, condition, id) for id in range(cfg.num_agent)] 
-server = FLServer(gym.make("CartPole-v1"), agents, cfg, condition)
+agents = [DQNAgent(gym.make('Acrobot-v1'), cfg, condition, id) for id in range(cfg.num_agent)] 
+server = FLServer(gym.make('Acrobot-v1'), agents, cfg, condition)
 
 for agent in agents:
     agent.policy_net.load_state_dict(server.global_model.state_dict())
@@ -445,7 +446,7 @@ train_history = {'agent_rewards': [agent.episode_durations for agent in agents]}
 floder_name = None
 n_times = 0
 if floder_name is None:
-    prefix = 'CartPole_'
+    prefix = 'Acrobot_'
 
     floder_name = prefix  # M17_20_all_delta_
 
