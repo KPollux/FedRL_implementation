@@ -1,5 +1,6 @@
 # %%
 import gymnasium as gym
+# import gym
 from stable_baselines3 import DDPG
 from stable_baselines3.common.noise import NormalActionNoise
 
@@ -92,13 +93,13 @@ agent_num = 3
 device = torch.device("cuda:0")
 
 modes = ['INDL', 'ShareParameter', 'QAvg', 'QGradual']
-mode = modes[2]
+mode = modes[3]
 print(mode)
 
 LOCAL_EPISODES = 8
 
 # DDPG 中使用的噪声对象
-envs = [gym.make('HalfCheetah-v3') for _ in range(agent_num)]
+envs = [gym.make('HalfCheetah-v4') for _ in range(agent_num)]
 n_actions = envs[0].action_space.shape[0]
 # 创建 DDPG 模型
 agents = [DDPG(
@@ -123,7 +124,6 @@ for idx in range(agent_num):
     train_history[idx] = {'agent_rewards':[], 'steps':[]}
 
 # %%
-
 global_weights = agents[0].policy.state_dict()
 # FL设定中，每个agent应该从相同的起点开始训练
 for agent in agents:
@@ -172,13 +172,15 @@ elif mode == 'QAvg':
             #             global_weights[key] += upload_weights[i][key] * avg_weights[i]
 
 elif mode == 'QGradual':
-    for i_communication in trange(math.ceil(50/LOCAL_EPISODES)):
+    for i_communication in trange(math.ceil(300_000/LOCAL_EPISODES)):
         # === Agent ===
         upload_weights = []
         for i, agent in enumerate(agents):
             # 每次训练前，下载权重
             agent.policy.load_state_dict(global_weights)
-            agent.learn(total_timesteps=LOCAL_EPISODES*1000, log_interval=1, callback=CustomLogger(i, train_history))
+            # agent.learn(total_timesteps=LOCAL_EPISODES*1000, log_interval=1, callback=CustomLogger(i, train_history))
+            agent.learn(total_timesteps=LOCAL_EPISODES, log_interval=1, reset_num_timesteps=False,
+                         callback=RewardLoggerCallback(i, train_history))
             # 每次训练后，上传权重
             upload_weights.append(agent.policy.state_dict())
     
@@ -188,10 +190,10 @@ elif mode == 'QGradual':
 
         # Define the starting and ending epsilon values
         EPS_START = 1.0
-        EPS_END = 1.0   # / num_selected_agent
+        EPS_END = 1.0 / num_selected_agent
 
         # Define the decay rate
-        EPS_DECAY = math.ceil(10/LOCAL_EPISODES)
+        EPS_DECAY = math.ceil(300_000/LOCAL_EPISODES)
         # EPS_DECAY = math.ceil(300/LOCAL_EPISODES/3)
 
         # Assuming that `current_round` is the current training round
