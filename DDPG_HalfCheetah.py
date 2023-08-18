@@ -87,16 +87,30 @@ class RewardLoggerCallback(BaseCallback):
         
         # Return True to continue training
         return True
+
+# # %%
+# import torch.optim as optim
+
+# class CustomDDPG(DDPG):
+#     def __init__(self, *args, **kwargs):
+#         super(CustomDDPG, self).__init__(*args, **kwargs)
+        
+#         # Replace actor optimizer
+#         self.actor_optimizer = optim.AdamW(self.actor.parameters(), lr=self.actor_lr, weight_decay=0.01)
+#         # Replace critic optimizer
+#         self.critic_optimizer = optim.AdamW(self.critic.parameters(), lr=self.critic_lr, weight_decay=0.01)
+
 # %%
 from tqdm import trange
 agent_num = 3
-device = torch.device("cuda:0")
+device = torch.device("cuda:1")
 
 modes = ['INDL', 'ShareParameter', 'QAvg', 'QGradual']
-mode = modes[1]
+mode = modes[2]
 print(mode)
 
 LOCAL_EPISODES = 8
+learning_rate = 0.0001  # 基准学习率
 
 # DDPG 中使用的噪声对象
 envs = [gym.make('HalfCheetah-v4') for _ in range(agent_num)]
@@ -110,6 +124,7 @@ agents = [DDPG(
     device = device,
     train_freq = 1,
     gradient_steps = 1,
+    learning_rate = learning_rate,
     # learning_starts = 100,
     # tensorboard_log="./custom_tensorboard/HalfCheetah/INDL/",
 ) for i in range(agent_num)]
@@ -196,11 +211,12 @@ elif mode == 'QGradual':
 
         # Define the decay rate
         # EPS_DECAY = 0
-        EPS_DECAY = math.ceil(math.ceil(30_000/LOCAL_EPISODES))
+        EPS_DECAY = math.ceil(math.ceil(50_000/LOCAL_EPISODES))
 
         # Assuming that `current_round` is the current training round
         if i_communication < EPS_DECAY:
             epsilon = EPS_START - ((EPS_START - EPS_END) * (i_communication / EPS_DECAY))
+            # epsilon = EPS_START
         else:
             epsilon = EPS_END
 
@@ -246,7 +262,7 @@ for idx in range(agent_num):
 mode_name = mode
 if mode == 'QGradual':
     mode_name = mode + '_' + str(EPS_DECAY)
-floder_name = 'DDPG_HalfCheetah_1step_' + mode_name + '_' + time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+floder_name = 'DDPG_HalfCheetah_1step_' + mode_name + '_' + str(learning_rate) + '_' + time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 print(floder_name)
 # create floder
 if not os.path.exists('./logs/' + floder_name):
@@ -266,6 +282,14 @@ with open('./logs/{}/train_history.pkl'.format(floder_name), 'wb') as f:
 # floder_name = 'DDPG_HalfCheetah_1step_QGradual_0_2023-08-15-11-48-47'
 # floder_name = 'DDPG_HalfCheetah_1step_QGradual_6250_2023-08-15-11-24-00'
 # floder_name = 'DDPG_HalfCheetah_1step_QGradual_3750_2023-08-15-13-09-00'
+# floder_name = 'DDPG_HalfCheetah_1step_ShareParameter_2023-08-15-19-21-21'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_6250_2023-08-15-20-41-12'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_7500_2023-08-15-22-09-05'
+# floder_name = 'DDPG_HalfCheetah_1step_QGradual_6250_2023-08-16-02-11-54'
+# floder_name = 'DDPG_HalfCheetah_1step_QAvg_1e-06_2023-08-18-04-02-50'
+# floder_name = 'DDPG_HalfCheetah_1step_QAvg_1e-05_2023-08-18-03-59-15'
+floder_name = 'DDPG_HalfCheetah_1step_QAvg_0.0001_2023-08-18-09-23-53'
+# floder_name = 'DDPG_HalfCheetah_1step_QAvg_0.001_2023-08-18-09-24-30'
 with open('./logs/{}/train_history.pkl'.format(floder_name), 'rb') as f:
     train_history = pickle.load(f)
 
@@ -274,7 +298,7 @@ agent_num = 3
 # plt.ylim(-1000, 6000)
 plt.xlabel('Thousands of Frames')
 plt.ylabel('Average Reward')
-plt.title('DDPGSharePara' + ' ' + 'HalfCheetah-v3')
+plt.title('DDPGGradual' + ' ' + 'HalfCheetah-v3')
 
 
 for idx in range(agent_num):
