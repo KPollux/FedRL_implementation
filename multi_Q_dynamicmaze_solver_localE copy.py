@@ -666,3 +666,56 @@ for i in range(100):
     a = 0.9*a + 0.1*b + 5
     print(a)
 # %%
+import numpy as np
+
+EPS_START = 1.0
+EPS_END = 1.0 / 3
+
+# Define the decay rate
+EPS_DECAYs = [0, 200, 2500, 5000, 10000, 15000, 50000, np.inf]
+legends = ['Decay-0(FedAvg)', 'Decay-200', 'Decay-2500', 'Decay-5000', 'Decay-10000', 'Decay-15000', 'Decay-50000', 'NoDecay']
+
+EPISODES = 50000
+for i, EPS_DECAY in enumerate(EPS_DECAYs):
+    e_list = []
+    for i_episode in range(EPISODES):
+        # Assuming that `current_round` is the current training round
+        if i_episode < EPS_DECAY:
+            epsilon = EPS_START - ((EPS_START - EPS_END) * (i_episode / EPS_DECAY)**2)
+            # epsilon = EPS_START
+        else:
+            epsilon = EPS_END
+        e_list.append(epsilon)
+
+    plt.plot(e_list, label=legends[i])
+plt.legend()
+plt.xlabel('Episode')
+plt.ylabel('Epsilon')
+# %%
+import numpy as np
+
+EPS_START = 1.0
+EPS_END = 1.0 / 3
+
+# Define the decay rate
+
+legends = ['Decay-0(FedAvg)', 'Decay-100', 'Decay-500', 'Decay-1000', 'NoDecay']
+EPS_DECAYs = [0, 100, 500, 1000, np.inf]
+
+EPISODES = 1000
+for i, EPS_DECAY in enumerate(EPS_DECAYs):
+    e_list = []
+    for i_episode in range(EPISODES):
+        # Assuming that `current_round` is the current training round
+        if i_episode < EPS_DECAY:
+            epsilon = EPS_START - ((EPS_START - EPS_END) * (i_episode / EPS_DECAY)**2)
+            # epsilon = EPS_START
+        else:
+            epsilon = EPS_END
+        e_list.append(epsilon)
+
+    plt.plot(e_list, label=legends[i])
+plt.legend()
+plt.xlabel('Episode')
+plt.ylabel('Epsilon')
+# %%

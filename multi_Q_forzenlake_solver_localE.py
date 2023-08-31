@@ -22,9 +22,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
-def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=False, FLdev=False, onlyA=False,
+def train(share_params=False, FL=False, role=False, share_memory=False, FLMax=False, FLdev=False, onlyA=False,
           FLAll=False, FLdelta=False, FLDynamicAvg=False, FLRewardShape=False,
-          FLGreedEpsilon=False, floder_name=None, n_times=0, dynamic=False):
+          FLGreedEpsilon=False, floder_name=None, n_times=0, dynamic=False, EPS_DECAY=200):
     # Hyperparameters
     EPISODES = 50000
     EPSILON = 0.1  # Random rate
@@ -230,7 +230,7 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
                     EPS_END = 1.0 / env.n_agents
 
                     # Define the decay rate
-                    EPS_DECAY = 2500
+                    EPS_DECAY = EPS_DECAY
 
                     # Assuming that `current_round` is the current training round
                     if i_episode < EPS_DECAY:
@@ -302,14 +302,14 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 
                     # Define the starting and ending epsilon values
                     EPS_START = 1.0
-                    EPS_END = 0.0 # 1.0 / env.n_agents
+                    EPS_END = 1.0 / env.n_agents
 
                     # Define the decay rate
-                    EPS_DECAY = 15000
+                    EPS_DECAY = EPS_DECAY
 
                     # Assuming that `current_round` is the current training round
                     if i_episode < EPS_DECAY:
-                        epsilon = EPS_START - ((EPS_START - EPS_END) * ((i_episode + 1) / EPS_DECAY))
+                        epsilon = EPS_START - ((EPS_START - EPS_END) * ((i_episode + 1) / EPS_DECAY) ** 2)
                         # epsilon = EPS_START
                     else:
                         epsilon = EPS_END
@@ -394,9 +394,9 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
         floder_name += 'FLAll_' if FLAll else ''
         floder_name += 'FLDelta_' if FLdelta else ''
 
-        floder_name += 'FLDynamicAvg_' if FLDynamicAvg else ''
+        floder_name += 'FLDynamicAvg_'+ str(EPS_DECAY) +'_' if FLDynamicAvg else ''
         floder_name += 'FLRewardShape_' if FLRewardShape else ''
-        floder_name += 'FLGreedEpsilon_' if FLGreedEpsilon else ''
+        floder_name += 'FLGreedEpsilon_'+ str(EPS_DECAY) +'_' if FLGreedEpsilon else ''
 
         floder_name += 'FLdev_' if FLdev else ''
 
@@ -408,10 +408,10 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
         # floder_name += 'role_' if role else ''
         # floder_name += 'Memoryshare_' if share_memory else ''
 
-        floder_name += 'ep{}_'.format(EPISODES)
 
         if floder_name == prefix:
             floder_name += 'Independent_'
+        floder_name += 'ep{}_'.format(EPISODES)
         floder_name += time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 
     # create floder
@@ -437,315 +437,341 @@ def main(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fal
 #                                                 floder_name=floder_name, n_times=n)
 
 # %%
-floder_name = None
-for n in trange(5):
-    train_history, policy_nets, floder_name = main(FLGreedEpsilon=True,
-                                                dynamic=False,
-                                                floder_name=floder_name, n_times=n)
+# EPS_DECAYs = [200, 2500, 5000, 10000, 15000, 50000, np.inf]
+
+# for EPS_DECAY in EPS_DECAYs:
+#     floder_name = None
+#     for n in trange(5):
+#         train_history, policy_nets, floder_name = main(FLGreedEpsilon=True,
+#                                                     dynamic=True,
+#                                                     floder_name=floder_name, n_times=n,
+#                                                     EPS_DECAY=EPS_DECAY)
+
+from multiprocessing import Process
+
+EPS_DECAYs = [200, 2500, 5000, 10000, 15000, 50000, np.inf]
+
+def process_function(EPS_DECAY):
+    floder_name = None
+    for n in trange(5):
+        train_history, policy_nets, floder_name = train(FLDynamicAvg=True,
+                                                        dynamic=True,
+                                                        floder_name=floder_name, n_times=n,
+                                                        EPS_DECAY=EPS_DECAY)
+
+if __name__ == '__main__':
+    processes = []
+    for EPS_DECAY in EPS_DECAYs:
+        p = Process(target=process_function, args=(EPS_DECAY,))
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
 
 # for n in range(5):
 #     train_history, policy_nets, floder_name, deltas_dict = main(FLDynamicAvg=True,
 #                                                 dynamic=False,
 #                                                 floder_name=floder_name, n_times=n)
 
-# %%
-dymnamic = True
-
-floder_name = None
-for n in trange(5):
-    train_history, policy_nets, floder_name = main(dynamic=dymnamic,
-                                                floder_name=floder_name, n_times=n)
-    
-floder_name = None
-for n in trange(5):
-    train_history, policy_nets, floder_name = main(share_params=True,
-                                                dynamic=dymnamic,
-                                                floder_name=floder_name, n_times=n)
-
-floder_name = None
-for n in trange(5):
-    train_history, policy_nets, floder_name = main(FL=True,
-                                                dynamic=dymnamic,
-                                                floder_name=floder_name, n_times=n)
-    
-floder_name = None
-for n in trange(5):
-    train_history, policy_nets, floder_name = main(FLDynamicAvg=True,
-                                                dynamic=dymnamic,
-                                                floder_name=floder_name, n_times=n)
+# # %%
+# dymnamic = True
 
 # floder_name = None
 # for n in trange(5):
-#     train_history, policy_nets, floder_name = main(FLMax=True,
+#     train_history, policy_nets, floder_name = main(dynamic=dymnamic,
+#                                                 floder_name=floder_name, n_times=n)
+    
+# floder_name = None
+# for n in trange(5):
+#     train_history, policy_nets, floder_name = main(share_params=True,
 #                                                 dynamic=dymnamic,
 #                                                 floder_name=floder_name, n_times=n)
 
-floder_name = None
-for n in trange(5):
-    train_history, policy_nets, floder_name = main(FLAll=True,
-                                                dynamic=dymnamic,
-                                                floder_name=floder_name, n_times=n)
+# floder_name = None
+# for n in trange(5):
+#     train_history, policy_nets, floder_name = main(FL=True,
+#                                                 dynamic=dymnamic,
+#                                                 floder_name=floder_name, n_times=n)
     
-# %%
+# floder_name = None
+# for n in trange(5):
+#     train_history, policy_nets, floder_name = main(FLDynamicAvg=True,
+#                                                 dynamic=dymnamic,
+#                                                 floder_name=floder_name, n_times=n)
 
+# # floder_name = None
+# # for n in trange(5):
+# #     train_history, policy_nets, floder_name = main(FLMax=True,
+# #                                                 dynamic=dymnamic,
+# #                                                 floder_name=floder_name, n_times=n)
 
-floder_name = None
-for n in range(5):
-    train_history, policy_nets, floder_name = main(share_params=False, FL=False,
-                                                role=False, share_memory=False, FLMax=False,
-                                                FLdev=False, onlyA=False, FLAll=True, FLdelta=False,
-                                                dynamic=True,
-                                                floder_name=floder_name, n_times=n)
-
-# %% 绘制参数
-n_agents = 3
-EPISODES = 50000
-env_size = 17
-
-agent_rewards = train_history['agent_rewards']
-agent_paths_length = train_history['agent_paths_length']
-agent_paths = train_history['agent_paths']
-agent_alives = train_history['agent_alives']
-agent_wins = train_history['agent_wins']
-
-# %%
-draw_history(agent_wins, agent_rewards, n_agents, EPISODES, window_size=1000)
-agent_paths_length
-
-# %%
-# deltas_dict
-# plt.plot(deltas_dict['deltas_1'])
-# plt.plot(deltas_dict['deltas_2'])
-# plt.plot(deltas_dict['deltas_global'])
-
-m1 = moving_average(deltas_dict['deltas_1'], 1000)
-m2 = moving_average(deltas_dict['deltas_2'], 1000)
-m3 = moving_average(deltas_dict['deltas_3'], 1000)
-mg = moving_average(deltas_dict['deltas_global'], 1000)
-
-# %%
-
-mavg = np.array(mg)/3
-# plt.ylim(0, 0.004)
-plt.figure(figsize=(10, 7.5))
-# 打开网格
-# plt.grid()
-
-plt.plot(m1, label='agent1')
-plt.plot(m2, label='agent2')
-plt.plot(m3, label='agent3')
-plt.plot(mg, label='global(add_all)')
-plt.plot(mavg, label='global(add_avg)')
-plt.plot()
-plt.legend()
-
-plt.title('Delta Q with communication rounds')
-plt.xlabel('Communication Rounds')
-plt.ylabel('MAE of delta Q')
-
-plt.tight_layout()
-plt.show()
-
-
-# %%
-ws1s, ws2s, ws3s = [], [], []
-for ws1, ws2, ws3 in deltas_dict['weights']:
-    ws1s.append(ws1)
-    ws2s.append(ws2)
-    ws3s.append(ws3)
-plt.plot(ws1s)
-# plt.plot(ws2s)
-# plt.plot(ws3s)
-
-
-
-
-# %%
-
-
-# %%
-delta_Qs = [deltas_dict['deltas_1'][0], deltas_dict['deltas_2'][0], deltas_dict['deltas_3'][0]]
-MAEs = [np.mean(np.abs(delta_Q)) for delta_Q in delta_Qs]
-# Normalize MAEs to [0, 1] range
-normalized_MAEs = (MAEs - np.min(MAEs)) / (np.max(MAEs) - np.min(MAEs))
-print(normalized_MAEs)
-
-
-
-# %%
-episode_index = 900
-draw_path(episode_index, agent_paths, n_agents, env_size)
-print(agent_paths)
-# %%
-plt.plot(agent_paths_length[1])
-# %%
-# save train_history
-# with open('./logs/{}/train_history.pkl'.format(floder_name), 'wb') as f:
-#     train_history = pickle.dump(train_history, f)
-# %%
-# load train_history
-with open('./logs/Memoryshare_level4_2023-05-23-00-17-26/train_history.pkl', 'rb') as f:
-    train_history = pickle.load(f)
-# %%
-
-torch.eye(3)
-# %%
-plt.plot(agent_paths_length[1])
-
-# %%
-import pandas as pd
-
-# 创建一个行名和列名为指定值的DataFrame，初始值全为0
-rows = [(i, j) for i in range(17) for j in range(17)]
-cols = ['↑', '→', '↓', '←']
-df = pd.DataFrame(0, index=rows, columns=cols)
-
-print(df)
-# policy_nets[0]
-# %%
-df += policy_nets[0]
-df
-# %%
-max_idx = df.idxmax(axis=1)
-Q_policy = np.array(max_idx.to_list()).reshape(17, 17)
-# %%
-def val(Q_policy):
-    MAZE = np.loadtxt('maze_cross_level4.txt')
-    SIZE = MAZE.shape[0]
-    MAX_STEPS_PER_EPISODE = 64
-    VAL_EPISODES = 64
+# floder_name = None
+# for n in trange(5):
+#     train_history, policy_nets, floder_name = main(FLAll=True,
+#                                                 dynamic=dymnamic,
+#                                                 floder_name=floder_name, n_times=n)
     
-    env = Gridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
-    num_states = SIZE * SIZE
-    num_actions = 4
+# # %%
 
-    # Initialize epsilon
-    episode_durations = [[] for _ in range(env.n_agents)]
-    agent_paths = [[] for _ in range(env.n_agents)]
-    agent_rewards = [[] for _ in range(env.n_agents)]
-    agent_paths_length = [[] for _ in range(env.n_agents)]
 
-    val_history = {'episode_durations': episode_durations, \
-                        'agent_paths': agent_paths, \
-                        'agent_rewards': agent_rewards, \
-                        'agent_paths_length': agent_paths_length}
+# floder_name = None
+# for n in range(5):
+#     train_history, policy_nets, floder_name = main(share_params=False, FL=False,
+#                                                 role=False, share_memory=False, FLMax=False,
+#                                                 FLdev=False, onlyA=False, FLAll=True, FLdelta=False,
+#                                                 dynamic=True,
+#                                                 floder_name=floder_name, n_times=n)
 
-    for i_episode in trange(VAL_EPISODES):
-        # Initialize the environment and state
-        env.reset()
+# # %% 绘制参数
+# n_agents = 3
+# EPISODES = 50000
+# env_size = 17
 
-        steps_done = [0 for _ in range(env.n_agents)]
+# agent_rewards = train_history['agent_rewards']
+# agent_paths_length = train_history['agent_paths_length']
+# agent_paths = train_history['agent_paths']
+# agent_alives = train_history['agent_alives']
+# agent_wins = train_history['agent_wins']
 
-        # Log intermediate variables
-        rewards = [0.0 for _ in range(env.n_agents)]
-        # Record the full history for each agent
-        full_history_position = [[] for _ in range(env.n_agents)]
+# # %%
+# draw_history(agent_wins, agent_rewards, n_agents, EPISODES, window_size=1000)
+# agent_paths_length
 
-        # raise
-        for t in count():
-            # 一人走一步
-            # Break the loop if the maximum steps per episode is reached or all agents are done
-            if t >= MAX_STEPS_PER_EPISODE or all([env.agents[i]['done'] for i in range(env.n_agents)]):
-                # 当超出最大步数时，对于没有完成的agent，记录其历史
-                for i in range(env.n_agents):
-                    if not env.agents[i]['done']:  # Only record for agents that are not done
-                        episode_durations[i].append(t + 1)
-                        agent_paths[i].append(full_history_position[i])
-                        agent_paths_length[i].append(len(full_history_position[i]))
-                        agent_rewards[i].append(rewards[i])     # Log cumulative reward
-                break
+# # %%
+# # deltas_dict
+# # plt.plot(deltas_dict['deltas_1'])
+# # plt.plot(deltas_dict['deltas_2'])
+# # plt.plot(deltas_dict['deltas_global'])
 
-            for idx in range(env.n_agents):
-                # The agent might have been done
-                if env.agents[idx]['done']:
-                    continue
+# m1 = moving_average(deltas_dict['deltas_1'], 1000)
+# m2 = moving_average(deltas_dict['deltas_2'], 1000)
+# m3 = moving_average(deltas_dict['deltas_3'], 1000)
+# mg = moving_average(deltas_dict['deltas_global'], 1000)
 
-                # Select and perform an action
-                state = env.get_state(idx)
-                state_index = int(state[0] * SIZE + state[1])
-                action = np.argmax(Q_policy[idx][state_index])
+# # %%
+
+# mavg = np.array(mg)/3
+# # plt.ylim(0, 0.004)
+# plt.figure(figsize=(10, 7.5))
+# # 打开网格
+# # plt.grid()
+
+# plt.plot(m1, label='agent1')
+# plt.plot(m2, label='agent2')
+# plt.plot(m3, label='agent3')
+# plt.plot(mg, label='global(add_all)')
+# plt.plot(mavg, label='global(add_avg)')
+# plt.plot()
+# plt.legend()
+
+# plt.title('Delta Q with communication rounds')
+# plt.xlabel('Communication Rounds')
+# plt.ylabel('MAE of delta Q')
+
+# plt.tight_layout()
+# plt.show()
+
+
+# # %%
+# ws1s, ws2s, ws3s = [], [], []
+# for ws1, ws2, ws3 in deltas_dict['weights']:
+#     ws1s.append(ws1)
+#     ws2s.append(ws2)
+#     ws3s.append(ws3)
+# plt.plot(ws1s)
+# # plt.plot(ws2s)
+# # plt.plot(ws3s)
+
+
+
+
+# # %%
+
+
+# # %%
+# delta_Qs = [deltas_dict['deltas_1'][0], deltas_dict['deltas_2'][0], deltas_dict['deltas_3'][0]]
+# MAEs = [np.mean(np.abs(delta_Q)) for delta_Q in delta_Qs]
+# # Normalize MAEs to [0, 1] range
+# normalized_MAEs = (MAEs - np.min(MAEs)) / (np.max(MAEs) - np.min(MAEs))
+# print(normalized_MAEs)
+
+
+
+# # %%
+# episode_index = 900
+# draw_path(episode_index, agent_paths, n_agents, env_size)
+# print(agent_paths)
+# # %%
+# plt.plot(agent_paths_length[1])
+# # %%
+# # save train_history
+# # with open('./logs/{}/train_history.pkl'.format(floder_name), 'wb') as f:
+# #     train_history = pickle.dump(train_history, f)
+# # %%
+# # load train_history
+# with open('./logs/Memoryshare_level4_2023-05-23-00-17-26/train_history.pkl', 'rb') as f:
+#     train_history = pickle.load(f)
+# # %%
+
+# torch.eye(3)
+# # %%
+# plt.plot(agent_paths_length[1])
+
+# # %%
+# import pandas as pd
+
+# # 创建一个行名和列名为指定值的DataFrame，初始值全为0
+# rows = [(i, j) for i in range(17) for j in range(17)]
+# cols = ['↑', '→', '↓', '←']
+# df = pd.DataFrame(0, index=rows, columns=cols)
+
+# print(df)
+# # policy_nets[0]
+# # %%
+# df += policy_nets[0]
+# df
+# # %%
+# max_idx = df.idxmax(axis=1)
+# Q_policy = np.array(max_idx.to_list()).reshape(17, 17)
+# # %%
+# def val(Q_policy):
+#     MAZE = np.loadtxt('maze_cross_level4.txt')
+#     SIZE = MAZE.shape[0]
+#     MAX_STEPS_PER_EPISODE = 64
+#     VAL_EPISODES = 64
+    
+#     env = Gridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
+#     num_states = SIZE * SIZE
+#     num_actions = 4
+
+#     # Initialize epsilon
+#     episode_durations = [[] for _ in range(env.n_agents)]
+#     agent_paths = [[] for _ in range(env.n_agents)]
+#     agent_rewards = [[] for _ in range(env.n_agents)]
+#     agent_paths_length = [[] for _ in range(env.n_agents)]
+
+#     val_history = {'episode_durations': episode_durations, \
+#                         'agent_paths': agent_paths, \
+#                         'agent_rewards': agent_rewards, \
+#                         'agent_paths_length': agent_paths_length}
+
+#     for i_episode in trange(VAL_EPISODES):
+#         # Initialize the environment and state
+#         env.reset()
+
+#         steps_done = [0 for _ in range(env.n_agents)]
+
+#         # Log intermediate variables
+#         rewards = [0.0 for _ in range(env.n_agents)]
+#         # Record the full history for each agent
+#         full_history_position = [[] for _ in range(env.n_agents)]
+
+#         # raise
+#         for t in count():
+#             # 一人走一步
+#             # Break the loop if the maximum steps per episode is reached or all agents are done
+#             if t >= MAX_STEPS_PER_EPISODE or all([env.agents[i]['done'] for i in range(env.n_agents)]):
+#                 # 当超出最大步数时，对于没有完成的agent，记录其历史
+#                 for i in range(env.n_agents):
+#                     if not env.agents[i]['done']:  # Only record for agents that are not done
+#                         episode_durations[i].append(t + 1)
+#                         agent_paths[i].append(full_history_position[i])
+#                         agent_paths_length[i].append(len(full_history_position[i]))
+#                         agent_rewards[i].append(rewards[i])     # Log cumulative reward
+#                 break
+
+#             for idx in range(env.n_agents):
+#                 # The agent might have been done
+#                 if env.agents[idx]['done']:
+#                     continue
+
+#                 # Select and perform an action
+#                 state = env.get_state(idx)
+#                 state_index = int(state[0] * SIZE + state[1])
+#                 action = np.argmax(Q_policy[idx][state_index])
                 
-                # Perform action
-                _, reward, done = env.step(idx, action)
-                steps_done[idx] += 1  # Increment steps_done for this agent
+#                 # Perform action
+#                 _, reward, done = env.step(idx, action)
+#                 steps_done[idx] += 1  # Increment steps_done for this agent
                 
-                # Flatten next_state
-                next_state = env.get_state(idx)
-                next_state_index = int(next_state[0] * SIZE + next_state[1])
+#                 # Flatten next_state
+#                 next_state = env.get_state(idx)
+#                 next_state_index = int(next_state[0] * SIZE + next_state[1])
 
-                # Record agent's path
-                full_history_position[idx].append(env.agents[idx]['pos'])
-                # Record agent's cumulative reward
-                rewards[idx] += float(reward)
+#                 # Record agent's path
+#                 full_history_position[idx].append(env.agents[idx]['pos'])
+#                 # Record agent's cumulative reward
+#                 rewards[idx] += float(reward)
 
-                state = next_state
+#                 state = next_state
 
-                if done:
-                    episode_durations[idx].append(t + 1)
-                    agent_paths[idx].append(full_history_position[idx])
-                    agent_paths_length[idx].append(len(full_history_position[idx]))
-                    agent_rewards[idx].append(rewards[idx])     # Log cumulative reward
-                    continue
-    return val_history
+#                 if done:
+#                     episode_durations[idx].append(t + 1)
+#                     agent_paths[idx].append(full_history_position[idx])
+#                     agent_paths_length[idx].append(len(full_history_position[idx]))
+#                     agent_rewards[idx].append(rewards[idx])     # Log cumulative reward
+#                     continue
+#     return val_history
 
-val_history = val(policy_nets)
-# %%
-val_history
-# %%
-import numpy as np
+# val_history = val(policy_nets)
+# # %%
+# val_history
+# # %%
+# import numpy as np
 
-# 假设 'Q1', 'Q2', 'Q3' 和 'Q_global' 是你的Q表
-Q1 = np.random.rand(289, 4)
-Q2 = np.random.rand(289, 4)
-Q3 = np.random.rand(289, 4)
-Q_global = np.random.rand(289, 4)
+# # 假设 'Q1', 'Q2', 'Q3' 和 'Q_global' 是你的Q表
+# Q1 = np.random.rand(289, 4)
+# Q2 = np.random.rand(289, 4)
+# Q3 = np.random.rand(289, 4)
+# Q_global = np.random.rand(289, 4)
 
-# 分别计算每个Agent的Q表与全局Q表的差值，得到DeltaQ
-DeltaQ1 = Q1 - Q_global
-DeltaQ2 = Q2 - Q_global
-DeltaQ3 = Q3 - Q_global
+# # 分别计算每个Agent的Q表与全局Q表的差值，得到DeltaQ
+# DeltaQ1 = Q1 - Q_global
+# DeltaQ2 = Q2 - Q_global
+# DeltaQ3 = Q3 - Q_global
 
-# 将三张DeltaQ表堆叠到新的维度，形成一个新的数组，它的shape是(3, 289, 4)
-DeltaQ = np.stack((DeltaQ1, DeltaQ2, DeltaQ3))
+# # 将三张DeltaQ表堆叠到新的维度，形成一个新的数组，它的shape是(3, 289, 4)
+# DeltaQ = np.stack((DeltaQ1, DeltaQ2, DeltaQ3))
 
-# 使用np.abs(DeltaQ)获取绝对值数组，然后在第0维上应用argmax函数获取绝对值最大的元素的索引
-indices = np.abs(DeltaQ).argmax(axis=0)
+# # 使用np.abs(DeltaQ)获取绝对值数组，然后在第0维上应用argmax函数获取绝对值最大的元素的索引
+# indices = np.abs(DeltaQ).argmax(axis=0)
 
-# 使用np.take_along_axis获取绝对值最大的元素
-max_DeltaQ = np.take_along_axis(DeltaQ, indices[np.newaxis, ...], axis=0)
+# # 使用np.take_along_axis获取绝对值最大的元素
+# max_DeltaQ = np.take_along_axis(DeltaQ, indices[np.newaxis, ...], axis=0)
 
-# 打印结果数组的shape，它应该是(289, 4)
-print(DeltaQ1)
-print('-----------------')
-print(DeltaQ2)
-print('-----------------')
-print(DeltaQ3)
-print('-----------------')
-print(max_DeltaQ)
-print('-----------------')
-print(max_DeltaQ.shape)
-# %%
-MAZE_ = np.loadtxt('maze17_0.2.txt')
-plt.imshow(MAZE_)
-# %%
-a = 9
-b = 20
+# # 打印结果数组的shape，它应该是(289, 4)
+# print(DeltaQ1)
+# print('-----------------')
+# print(DeltaQ2)
+# print('-----------------')
+# print(DeltaQ3)
+# print('-----------------')
+# print(max_DeltaQ)
+# print('-----------------')
+# print(max_DeltaQ.shape)
+# # %%
+# MAZE_ = np.loadtxt('maze17_0.2.txt')
+# plt.imshow(MAZE_)
+# # %%
+# a = 9
+# b = 20
 
-for i in range(100):
-    a = 0.9*a + 0.1*b + 5
-    print(a)
-# %%
-EPS_START = 1
-EPS_END = 1/3
-EPS_DECAY = 5000
-progress = []
-total_rounds = 50000
-for current_round in range(total_rounds):
-    if current_round < EPS_DECAY:
-        epsilon = EPS_START - ((EPS_START - EPS_END) * current_round / EPS_DECAY)
-    else:
-        epsilon = EPS_END
-    progress.append(epsilon)
+# for i in range(100):
+#     a = 0.9*a + 0.1*b + 5
+#     print(a)
+# # %%
+# EPS_START = 1
+# EPS_END = 1/3
+# EPS_DECAY = 5000
+# progress = []
+# total_rounds = 50000
+# for current_round in range(total_rounds):
+#     if current_round < EPS_DECAY:
+#         epsilon = EPS_START - ((EPS_START - EPS_END) * current_round / EPS_DECAY)
+#     else:
+#         epsilon = EPS_END
+#     progress.append(epsilon)
 
-plt.plot(progress)
+# plt.plot(progress)
 

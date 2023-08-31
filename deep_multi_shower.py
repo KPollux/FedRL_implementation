@@ -142,7 +142,7 @@ log_agent_rewards_list = np.array(log_agent_rewards_list)
 log_agent_paths_length_list = np.array(log_agent_paths_length_list)
 # log_agent_wins_list = np.array(log_agent_wins_list)
 
-print(log_agent_rewards_list.shape) # (3, 3, 1000) 3 tests, 3 agents, 1000 episodes
+print(log_agent_rewards_list.shape) # (4, 5, 3, 500) 3算法 , 5flod, 3 agents, 500 episodes
 
 # %%
 def tsplot(ax, data, **kw):

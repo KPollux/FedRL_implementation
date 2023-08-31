@@ -441,11 +441,11 @@ with open('./logs/{}/train_history.pkl'.format(floder_name), 'rb') as f:
 
 agent_num = 3
 
-# plt.ylim(-1000, 6000)
+plt.ylim(-1000, 3000)
 plt.xlabel('Thousands of Frames')
 plt.ylabel('Average Reward')
-title_name = floder_name.split('_')[4]
-plt.title(title_name + ' ' + 'HalfCheetah-v3')
+title_name = floder_name.split('_')[3]
+plt.title('DDPG' + title_name + ' ' + 'HalfCheetah-v3')
 
 
 for idx in range(agent_num):
@@ -456,7 +456,7 @@ for idx in range(agent_num):
     train_history[idx]['avg_rewards'] = avg_1000.cumsum() / np.arange(1, len(train_history[idx]['agent_rewards'])/1000 + 1)
     
     plt.plot(train_history[idx]['avg_rewards'], label=f'agent_{idx}')
-    plt.plot(avg_1000)
+    # plt.plot(avg_1000)
 plt.legend()
 plt.show()
 # %%
@@ -596,19 +596,72 @@ plt.show()
 str(np.inf)
 
 # %%
+import math
+
 EPS_START = 1
-EPS_END = 1/3
-EPS_DECAY = np.inf
+EPS_END = 1
+EPS_DECAY = 10000
 warmup_steps_rounds = 500
+LOCAL_EPISODE = 8
+
+warmup_steps_rounds = math.ceil(50_000/LOCAL_EPISODE)
+EPS_DECAY = math.ceil(1_000_000/LOCAL_EPISODE)
+
 elist = []
-for i_c in range(10000):
-    if i_c < warmup_steps_rounds:
-        epsilon = 1/3 - ((1/3 - 1) * (i_c / warmup_steps_rounds))
-    elif i_c < EPS_DECAY:
-        epsilon = EPS_START - ((EPS_START - EPS_END) * ((i_c - warmup_steps_rounds) / EPS_DECAY))
-        # epsilon = EPS_START
-    else:
-        epsilon = EPS_END
+c_r = 0
+for i_c in range(1_000_000):
+    if i_c % LOCAL_EPISODE == 0:
+
+        if c_r < warmup_steps_rounds:
+            epsilon = 1/3 - ((1/3 - 1) * (c_r / warmup_steps_rounds))
+        elif c_r < EPS_DECAY:
+            epsilon = EPS_START - ((EPS_START - EPS_END) * ((c_r - warmup_steps_rounds) / EPS_DECAY))
+            # epsilon = EPS_START
+        else:
+            epsilon = EPS_END
+        
+        if epsilon>0.45:
+            epsilon = 0.45
+
+        c_r += 1
+    if i_c == 10_000:
+        print(epsilon)
     elist.append(epsilon)
 plt.plot(elist)
+plt.xlabel('Communication Rounds')
+plt.ylabel('Gradual Weight')
+# %%
+
+# 定义参数
+initial_lr = 1.0  # 初始学习率
+min_lr = 0.0  # 最小学习率
+total_epochs = math.ceil(1_000_000 / LOCAL_EPISODE)  # 总的轮次
+warmup_epochs = total_epochs * 0  # warmup阶段的轮次
+warmdown_epochs = total_epochs * 0.28  # warmdown阶段的轮次
+steady_epochs = total_epochs - warmup_epochs - warmdown_epochs  # 稳定阶段的轮次
+
+lr_list = []
+
+for i_communication in range(total_epochs):
+# 计算当前的学习率
+    if i_communication < warmup_epochs:
+        warmup_factor = i_communication / warmup_epochs
+        lr = initial_lr * warmup_factor
+    elif i_communication < warmup_epochs + steady_epochs:
+        lr = initial_lr
+    else:
+        warmdown_range = warmdown_epochs
+        warmdown_factor = (i_communication - warmup_epochs - steady_epochs) / warmdown_range
+        lr = initial_lr - (initial_lr - min_lr) * warmdown_factor
+        
+    lr_list.append(lr)
+
+
+plt.plot(lr_list)
+
+
+# ...
+
+
+
 # %%
