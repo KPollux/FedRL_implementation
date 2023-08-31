@@ -719,3 +719,32 @@ plt.legend()
 plt.xlabel('Episode')
 plt.ylabel('Epsilon')
 # %%
+EPISODES = 1000
+e_list = []
+
+for i_episode in range(EPISODES):
+    DECAY_RATIO = [0.1, 0.7, 0.2]
+    one_third = 1 / 3
+
+    # Define the episode thresholds for each decay phase
+    first_phase_end = EPISODES * DECAY_RATIO[0]
+    second_phase_end = EPISODES * (DECAY_RATIO[0] + DECAY_RATIO[1])
+
+    if i_episode < first_phase_end:
+        # First phase of episodes
+        epsilon = 1 - ((1 - one_third) * (i_episode / first_phase_end))
+    elif i_episode < second_phase_end:
+        # Second phase of episodes
+        epsilon = one_third
+    else:
+        # Last phase of episodes
+        epsilon = one_third - ((one_third) * ((i_episode - second_phase_end) / (EPISODES - second_phase_end)))
+    
+    e_list.append(epsilon)
+
+plt.plot(e_list)
+
+# %%
+DECAY_RATIO = [0.1, 0.7, 0.2]
+str_decay_ratio = ''.join(map(str, [int(x * 10) for x in DECAY_RATIO]))
+print(str_decay_ratio)

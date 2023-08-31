@@ -261,13 +261,20 @@ def moving_average(data_list, window_size=100):
 # 冰冻动态地图参数实验
 log_paths = [
     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FL_8LStep_ep50000_2023-06-23-23-03-03',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_200_8LStep_ep50000_2023-08-30-17-34-58',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_2500_8LStep_ep50000_2023-08-30-17-34-59',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_5000_8LStep_ep50000_2023-08-30-17-35-30',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_10000_8LStep_ep50000_2023-08-30-17-36-09',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_15000_8LStep_ep50000_2023-08-30-17-36-17',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_50000_8LStep_ep50000_2023-08-30-17-37-49',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_inf_8LStep_ep50000_2023-08-30-17-39-31'
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_200_8LStep_ep50000_2023-08-30-17-34-58',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_2500_8LStep_ep50000_2023-08-30-17-34-59',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_5000_8LStep_ep50000_2023-08-30-17-35-30',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_10000_8LStep_ep50000_2023-08-30-17-36-09',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_15000_8LStep_ep50000_2023-08-30-17-36-17',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_50000_8LStep_ep50000_2023-08-30-17-37-49',
+    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_inf_8LStep_ep50000_2023-08-30-17-39-31'
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_200_8LStep_ep50000_2023-08-30-20-03-30',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_2500_8LStep_ep50000_2023-08-30-20-03-40',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_5000_8LStep_ep50000_2023-08-30-20-03-02',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_10000_8LStep_ep50000_2023-08-30-20-03-44',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_15000_8LStep_ep50000_2023-08-30-20-04-25',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_50000_8LStep_ep50000_2023-08-30-20-05-16',
+    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_inf_8LStep_ep50000_2023-08-30-20-06-26',
 
 ]
 
