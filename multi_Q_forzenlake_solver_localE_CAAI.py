@@ -229,7 +229,7 @@ def train(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fa
                     EPS_START = 1.0
                     EPS_END = 0
 
-                    DECAY_RATIO = [0.1, 0.7, 0.2]
+                    DECAY_RATIO = DECAY_RATIO
                     one_third = 1 / 3
 
                     # Define the episode thresholds for each decay phase
