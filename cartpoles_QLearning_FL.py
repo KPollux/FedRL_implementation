@@ -104,10 +104,10 @@ class FLServer:
 
             # Define the starting and ending epsilon values
             EPS_START = 1.0
-            EPS_END = 1.0 / cfg.num_agent
+            EPS_END = 1.0  #  / cfg.num_agent
 
             # Define the decay rate
-            EPS_DECAY = 500
+            EPS_DECAY = 1
 
             # Assuming that `current_round` is the current training round
             if self.i_episode < EPS_DECAY:
@@ -432,7 +432,7 @@ await train()
 # %%
 
 print('Complete')
-plot_durations(agents[2].episode_durations, show_result=True)
+plot_durations(agents[1].episode_durations, show_result=True)
 plt.ioff()
 plt.show()
 # %%

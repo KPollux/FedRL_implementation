@@ -54,19 +54,19 @@ log_paths = [
 # for i, path in enumerate(log_paths):
 #     log_paths[i] = './logs/' + path + '/'
 
-log_paths = [
-    'DDPG_HalfCheetah_1step_SGD_QGradual_1_decay_gap_1_0.0001_2023-08-21-00-07-02',
-    'DDPG_HalfCheetah_1step_SGD_QGradual_1_decay_gap_1_0.0001_2023-08-21-00-18-28',  # GC
-    'DDPG_HalfCheetah_1step_SGD_QGradual_inf_decay_gap_1_warmup_6250_s1.0_e0.3333333333333333_0.0001_2023-08-21-03-31-10',
+# log_paths = [
+#     'DDPG_HalfCheetah_1step_SGD_QGradual_1_decay_gap_1_0.0001_2023-08-21-00-07-02',
+#     'DDPG_HalfCheetah_1step_SGD_QGradual_1_decay_gap_1_0.0001_2023-08-21-00-18-28',  # GC
+#     'DDPG_HalfCheetah_1step_SGD_QGradual_inf_decay_gap_1_warmup_6250_s1.0_e0.3333333333333333_0.0001_2023-08-21-03-31-10',
 
-]
+# ]
 
-log_paths = [
-    'DDPG_HalfCheetah_1step_ShareParameter_0.0001_2023-08-18-22-34-31',
-    'DDPG_HalfCheetah_1step_SGD_ShareParameter_0.0001_2023-08-20-09-27-01',
-    'DDPG_HalfCheetah_1step_QAvg_0.0001_2023-08-18-09-23-53',
-    'DDPG_HalfCheetah_1step_SGD_QAvg_0.0001_2023-08-20-09-27-02'
-]
+# log_paths = [
+#     'DDPG_HalfCheetah_1step_ShareParameter_0.0001_2023-08-18-22-34-31',
+#     'DDPG_HalfCheetah_1step_SGD_ShareParameter_0.0001_2023-08-20-09-27-01',
+#     'DDPG_HalfCheetah_1step_QAvg_0.0001_2023-08-18-09-23-53',
+#     'DDPG_HalfCheetah_1step_SGD_QAvg_0.0001_2023-08-20-09-27-02'
+# ]
 
 n_agents = 3
 
@@ -126,8 +126,8 @@ for floder_name in log_paths:
 # legends = ['INDL', 'SQ', 'QAvg', 'QGradual']  #, 'QMax', 'QAll', 'FLGreedEpsilon']
 # legends = ['INDL', 'SQ', 'QAvg', 'QMax', 'QAll', 'FLGreedEpsilon']
 legends = ['DDPG', 'DDPGShare', 'DDPGAvg', 'DDPGGradual']
-legends = ['DDPGGradual', 'DDPGGradual+GC', 'DDPGGradual+GC+Warmup']
-legends = ['DDPGShare-AdamInAgent', 'DDPGShare-SGDInAgent', 'DDPGAvg-AdamInAgent', 'DDPGAvg-SGDInAgent']
+# legends = ['DDPGGradual', 'DDPGGradual+GC', 'DDPGGradual+GC+Warmup']
+# legends = ['DDPGShare-AdamInAgent', 'DDPGShare-SGDInAgent', 'DDPGAvg-AdamInAgent', 'DDPGAvg-SGDInAgent']
 
 
 
@@ -145,26 +145,38 @@ def expand_arr(arr, size):
 
     return arr_expanded
 
-log_agent_rewards_list = np.array(log_agent_rewards_list)
-# print(log_agent_rewards_list.shape)
+log_agent_rewards_list_ori = np.array(log_agent_rewards_list)
+print(log_agent_rewards_list_ori.shape)
 
-x_axis = int(len(log_agent_rewards_list[0, 0, :]) / 1000)
+
+# %%
+x_axis = int(len(log_agent_rewards_list_ori[0, 0, :]) / 1000)
 
 log_agent_rewards_avg_list = np.zeros((len(log_paths), n_agents, x_axis))
+log_agent_rewards_sum_1000 = np.zeros((len(log_paths), n_agents, x_axis))
 for i in range(len(log_paths)):
     for idx in range(3):
         # 在每一个step上求历史平均值
-        log_array = log_agent_rewards_list[i][idx]
-        avg_1000 = log_array.reshape(-1, 1000).sum(axis=1)
+        log_array = log_agent_rewards_list_ori[i][idx]
+        # avg_1000 = log_array.reshape(-1, 1000).sum(axis=1)
         # train_history[idx]['avg_rewards'] = np.array(train_history[idx]['agent_rewards']).cumsum() / np.arange(1, len(train_history[idx]['agent_rewards']) + 1)
-        log_agent_rewards_avg_list[i][idx] = avg_1000.cumsum() / np.arange(1, len(log_array)/1000 + 1)
+        # log_agent_rewards_avg_list[i][idx] = avg_1000.cumsum() / np.arange(1, len(log_array)/1000 + 1)
+        # print(avg_1000.shape)
+
+        log_agent_rewards_sum_1000[i][idx] = log_array.reshape(-1, 1000).sum(axis=1)
     
 # log_agent_paths_length_list = np.array(log_agent_paths_length_list)
 # log_agent_wins_list = np.array(log_agent_wins_list)
 
 # log_agent_rewards_avg_list.shape
-
-log_agent_rewards_list = expand_arr(log_agent_rewards_avg_list, 5)
+log_agent_rewards_sum_1000.shape
+print(log_agent_rewards_sum_1000)
+# %%
+log_agent_rewards_list = expand_arr(log_agent_rewards_sum_1000, 5)
+# log_agent_rewards_list = expand_arr(log_agent_rewards_list_ori, 5)
+log_agent_rewards_list.shape
+# %%
+# log_agent_rewards_list = expand_arr(log_agent_rewards_avg_list, 5)
 # log_agent_paths_length_list = expand_arr(log_agent_paths_length_list, 5)
 
 # print(log_agent_rewards_list.shape) # (3, 3, 1000) 3 tests, 3 agents, 1000 episodes
@@ -189,7 +201,7 @@ plt.rcParams.update({'font.size': 15})
 legend_handles = []
 
 add_sd = False
-window_size = 1
+window_size = 64
 for i in range(3):
     for j in range(len(log_paths)):  # 循环遍历每个test
         data = copy.deepcopy(log_agent_rewards_list[j, :, i, :])
@@ -205,7 +217,7 @@ for i in range(3):
             axs[i].plot(range(window_size, len(data) + window_size), data, label=legends[j])  # 绘制每个agent在每个test的数据
 
     axs[i].set_title(agents[i])  # 设置子图标题
-    axs[i].set_xlabel('Episodes', fontsize=15)  # 设置x轴标签
+    axs[i].set_xlabel('Thousand Steps', fontsize=15)  # 设置x轴标签
     axs[i].set_ylabel('Running Average Rewards', fontsize=15)  # 设置y轴标签
     axs[i].grid(True)
     if not add_sd:

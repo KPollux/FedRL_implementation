@@ -340,11 +340,13 @@ for _ in range(3):
     for idx in range(agent_num):
         idx = str(idx)
         # 在每一个step上求历史平均值
-        avg_1000 = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
+        # avg_1000 = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
         # train_history[idx]['avg_rewards'] = np.array(train_history[idx]['agent_rewards']).cumsum() / np.arange(1, len(train_history[idx]['agent_rewards']) + 1)
-        train_history[idx]['avg_rewards'] = avg_1000.cumsum() / np.arange(1, len(train_history[idx]['agent_rewards'])/1000 + 1)
+        # train_history[idx]['avg_rewards'] = avg_1000.cumsum() / np.arange(1, len(train_history[idx]['agent_rewards'])/1000 + 1)
 
-        plt.plot(train_history[idx]['avg_rewards'], label=f'agent_{idx}')
+        train_history[idx]['eps_rewards'] = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
+
+        plt.plot(train_history[idx]['eps_rewards'], label=f'agent_{idx}')
 
     # %%
     # 保存训练历史
@@ -441,7 +443,7 @@ with open('./logs/{}/train_history.pkl'.format(floder_name), 'rb') as f:
 
 agent_num = 3
 
-plt.ylim(-1000, 3000)
+# plt.ylim(-1000, 3000)
 plt.xlabel('Thousands of Frames')
 plt.ylabel('Average Reward')
 title_name = floder_name.split('_')[3]
@@ -451,12 +453,13 @@ plt.title('DDPG' + title_name + ' ' + 'HalfCheetah-v3')
 for idx in range(agent_num):
     idx = str(idx)
     # 在每一个step上求历史平均值
-    avg_1000 = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
+    # avg_1000 = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
     # train_history[idx]['avg_rewards'] = np.array(train_history[idx]['agent_rewards']).cumsum() / np.arange(1, len(train_history[idx]['agent_rewards']) + 1)
-    train_history[idx]['avg_rewards'] = avg_1000.cumsum() / np.arange(1, len(train_history[idx]['agent_rewards'])/1000 + 1)
-    
-    plt.plot(train_history[idx]['avg_rewards'], label=f'agent_{idx}')
-    # plt.plot(avg_1000)
+    # train_history[idx]['avg_rewards'] = avg_1000.cumsum() / np.arange(1, len(train_history[idx]['agent_rewards'])/1000 + 1)
+
+    train_history[idx]['eps_rewards'] = np.array(train_history[idx]['agent_rewards']).reshape(-1, 1000).sum(axis=1)
+
+    plt.plot(train_history[idx]['eps_rewards'], label=f'agent_{idx}')
 plt.legend()
 plt.show()
 # %%

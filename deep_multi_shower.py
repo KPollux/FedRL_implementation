@@ -75,7 +75,14 @@ log_paths = [
     'CartPole_Independent_2023-08-01-01-07-15',
     'CartPole_Paramsshare_2023-08-01-09-41-27',
     'CartPole_FL_2023-08-01-01-34-04',
-    'CartPole_FLDynamicAvg_2023-08-07-04-01-05',
+    # 'CartPole_FLDynamicAvg_2023-08-07-04-01-05',  # decay 500
+    'CartPole_FLDynamicAvg_2023-08-07-16-36-44',  # decay inf
+]
+
+# Acrobot
+log_paths = [
+    'Acrobot_Independent_2023-08-07-17-23-53',
+    'Acrobot_Paramsshare_2023-08-07-17-43-22',
 ]
 for i, path in enumerate(log_paths):
     log_paths[i] = './logs/' + path + '/'
@@ -133,7 +140,8 @@ env_size = 17
 # legends = ['5', '10', '20', '50', '100']
 # legends = ['INDL', 'SQ', 'QAvg', 'QAll']
 # legends = ['FL', '5000', '10000', '500000']
-legends = ['INDL', 'SQ', 'QAvg', 'QGradual']  #, 'QMax', 'QAll', 'FLGreedEpsilon']
+legends = ['DQN', 'ShareDQN', 'DQN-Avg', 'DQN-Gradual']  #, 'QMax', 'QAll', 'FLGreedEpsilon']
+legends = ['DQN', 'ShareDQN']  #, 'QMax', 'QAll', 'FLGreedEpsilon']
 # legends = ['INDL', 'SQ', 'QAvg', 'QMax', 'QAll', 'FLGreedEpsilon']
 
 
@@ -142,7 +150,7 @@ log_agent_rewards_list = np.array(log_agent_rewards_list)
 log_agent_paths_length_list = np.array(log_agent_paths_length_list)
 # log_agent_wins_list = np.array(log_agent_wins_list)
 
-print(log_agent_rewards_list.shape) # (4, 5, 3, 500) 3算法 , 5flod, 3 agents, 500 episodes
+print(log_agent_rewards_list.shape) # (3, 3, 1000) 3 tests, 3 agents, 1000 episodes
 
 # %%
 def tsplot(ax, data, **kw):
@@ -189,7 +197,7 @@ for i in range(3):
     axs[i].tick_params(axis='both', which='major', labelsize=15)
 
     # axs[i].set_xlim([0, 400])
-    # axs[i].set_ylim([-35, None])
+    axs[i].set_ylim([-100, None])
 
 # 对每个子图添加图例
 if add_sd:

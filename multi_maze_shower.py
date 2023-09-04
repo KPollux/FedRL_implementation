@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 # %% draw with multiple folds
 def smooth(data, sm=1):
+    smooth_data = []
     if sm > 1:
-        smooth_data = []
         for d in data:
             y = np.ones(sm)*1.0/sm
             d = np.convolve(y, d, "same")
@@ -174,28 +174,19 @@ def moving_average(data_list, window_size=100):
 # ]
 
 # 静态难度地图、三Agent、相同奖励(无启发式)、8ls（文章1）
-# log_paths = [
-#     'Q_learning_M1720_noHRwd_5flod_ep1000_2023-06-18-00-45-18',
-#     'Q_learning_M1720_noHRwd_5flod_Paramsshare_ep1000_2023-06-18-00-46-01',
-#     'Q_learning_M1720_noHRwd_5flod_FL_8LStep_ep1000_2023-06-18-00-46-33',
-#     # 'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-18-11-35',  # 衰减100轮
-#     # 'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-18-20-11',  # 衰减500轮
-#     'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-19-27-04',  # 衰减1000轮
-#     # 'Q_learning_M1720_noHRwd_5flod_FLMax_8LStep_ep1000_2023-06-18-00-48-08',
-#     # 'Q_learning_M1720_noHRwd_5flod_FLAll_8LStep_ep1000_2023-06-18-00-48-37',
-#     # 'Q_learning_M1720_noHRwd_5flod_FLGreedEpsilon_8LStep_ep1000_2023-07-27-00-55-28',
-#     'Q_learning_ER_M1720_noHRwd_5flod_ep1000_2023-08-07-02-37-54',
-#     'Q_learning_M1720_noHRwd_5flod_Independent_DoubleQ_ep1000_2023-08-04-01-39-18',
-# ]
-
-# 静态地图参数
-# log_paths = [
-#     'Q_learning_M1720_noHRwd_5flod_FL_8LStep_ep1000_2023-06-18-00-46-33',
-#     'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-18-11-35',  # 衰减100轮
-#     'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-18-20-11',  # 衰减500轮
-#     'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-19-27-04',  # 衰减1000轮
-#     'Q_learning_M1720_noHRwd_5flod_FLAll_8LStep_ep1000_2023-06-18-00-48-37',
-# ]
+log_paths = [
+    'Q_learning_M1720_noHRwd_5flod_ep1000_2023-06-18-00-45-18',
+    # 'Q_learning_M1720_noHRwd_5flod_Paramsshare_ep1000_2023-06-18-00-46-01',
+    'Q_learning_M1720_noHRwd_5flod_FL_8LStep_ep1000_2023-06-18-00-46-33',
+    # 'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-18-11-35',  # 衰减100轮
+    # 'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-18-20-11',  # 衰减500轮
+    # 'Q_learning_M1720_noHRwd_5flod_FLDynamicAvg_8LStep_ep1000_2023-06-19-19-27-04',  # 衰减1000轮
+    # 'Q_learning_M1720_noHRwd_5flod_FLMax_8LStep_ep1000_2023-06-18-00-48-08',
+    'Q_learning_M1720_noHRwd_5flod_FLAll_8LStep_ep1000_2023-06-18-00-48-37',
+    # 'Q_learning_M1720_noHRwd_5flod_FLGreedEpsilon_8LStep_ep1000_2023-07-27-00-55-28',
+    'Q_learning_ER_M1720_noHRwd_5flod_ep1000_2023-08-07-02-37-54',
+    'Q_learning_M1720_noHRwd_5flod_Independent_DoubleQ_ep1000_2023-08-04-01-39-18',
+]
 
 # # 动态难度地图、三Agent、相同奖励(无启发式)、8ls（文章1）
 # log_paths = [
@@ -208,8 +199,6 @@ def moving_average(data_list, window_size=100):
 #     'Q_learning_M1720_noHRwd_5flod_dynamic_FLGreedEpsilon_8LStep_ep1000_2023-07-27-02-48-24',
     
 # ]
-
-
 
 # # 冰冻难度地图、三Agent、相同奖励(无启发式)、8ls（文章1）
 # log_paths = [
@@ -232,18 +221,6 @@ def moving_average(data_list, window_size=100):
     
 # ]
 
-# log_paths = [
-#     'Q_learning_M1720Forzen_noHRwd_5flod_FL_8LStep_ep50000_2023-06-18-03-36-13',
-#     'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_ep50000_2023-07-27-15-32-30',  # 衰减200轮 - 很慢
-#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-27-02-38-04',  # 衰减2500轮
-#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-02-51-11', # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-43-33',  # 渐变1阶 5000轮
-#     'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-18-25-35',  # 衰减10000轮
-#     'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_8LStep_ep50000_2023-07-27-16-18-14',  # 衰减15000轮
-#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-01-43-30', # 衰减50000轮
-#     'Q_learning_M1720Forzen_noHRwd_5flod_FLAll_8LStep_ep50000_2023-06-18-04-19-31',
-
-# ]
-
 # 冰冻动态地图、三Agent、相同奖励(无启发式)、8ls（文章1）
 # log_paths = [
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_ep50000_2023-06-23-22-27-20',
@@ -257,27 +234,6 @@ def moving_average(data_list, window_size=100):
 #     'Q_learning_ER_M1720Forzen_noHRwd_5flod_dynamic_ep50000_2023-08-07-03-22-18',
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_Independent_DoubleQ_ep50000_2023-08-04-02-25-40',
 # ]
-
-# 冰冻动态地图参数实验
-log_paths = [
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FL_8LStep_ep50000_2023-06-23-23-03-03',
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_200_8LStep_ep50000_2023-08-30-17-34-58',
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_2500_8LStep_ep50000_2023-08-30-17-34-59',
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_5000_8LStep_ep50000_2023-08-30-17-35-30',
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_10000_8LStep_ep50000_2023-08-30-17-36-09',
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_15000_8LStep_ep50000_2023-08-30-17-36-17',
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_50000_8LStep_ep50000_2023-08-30-17-37-49',
-    # 'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_inf_8LStep_ep50000_2023-08-30-17-39-31'
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_200_8LStep_ep50000_2023-08-30-20-03-30',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_2500_8LStep_ep50000_2023-08-30-20-03-40',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_5000_8LStep_ep50000_2023-08-30-20-03-02',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_10000_8LStep_ep50000_2023-08-30-20-03-44',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_15000_8LStep_ep50000_2023-08-30-20-04-25',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_50000_8LStep_ep50000_2023-08-30-20-05-16',
-    'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_inf_8LStep_ep50000_2023-08-30-20-06-26',
-
-]
-
 for i, path in enumerate(log_paths):
     log_paths[i] = './logs/' + path + '/'
 
@@ -319,9 +275,7 @@ env_size = 17
 # legends = ['5', '10', '20', '50', '100']
 # legends = ['INDL', 'SQ', 'QAvg', 'QAll']
 # legends = ['FL', '5000', '10000', '500000']
-# legends = ['Q-Learning', 'SQ', 'QAvg', 'QGradual', 'Q-ER', 'DoubleQ']
-# legends = ['Decay-0(FedAvg)', 'Decay-100', 'Decay-500', 'Decay-1000', 'NoDecay']
-legends = ['Decay-0(FedAvg)', 'Decay-200', 'Decay-2500', 'Decay-5000', 'Decay-10000', 'Decay-15000', 'Decay-50000', 'NoDecay']
+legends = ['Q-Learning', 'QAvg', 'QGradual', 'Q-ER', 'DoubleQ']
 # legends = ['Q-Learning', 'SQ', 'QAvg', 'QGradual', 'DoubleQ']
 
 # legends = ['INDL', 'SQ', 'QAvg', 'QMax', 'QAll', 'FLGreedEpsilon']
@@ -355,13 +309,13 @@ plt.rcParams.update({'font.size': 15})
 legend_handles = []
 
 add_sd = False
-window_size = 6400
+window_size = 64
 for i in range(3):
     for j in range(len(log_paths)):  # 循环遍历每个test
         data = copy.deepcopy(log_agent_rewards_list[j, :, i, :])
 
         # if j == 2:
-        #     data -= 0.3
+        #     data -= 0.2
 
         if add_sd:
             line = tsplot(axs[i], data, label=legends[j])  # 绘制每个agent在每个test的数据
@@ -370,7 +324,7 @@ for i in range(3):
         else:
             data = np.mean(data, axis=0)
             data = moving_average(data, window_size)
-            # data = smooth(data, 2)
+            # data = smooth(data, 64)
             axs[i].plot(range(window_size, len(data) + window_size), data, label=legends[j])  # 绘制每个agent在每个test的数据
 
     axs[i].set_title(agents[i])  # 设置子图标题
@@ -382,7 +336,7 @@ for i in range(3):
     axs[i].tick_params(axis='both', which='major', labelsize=15)
 
     # axs[i].set_xlim([0, 400])
-    # axs[i].set_ylim([-50, None])
+    axs[i].set_ylim([-250, None])
 
 # 对每个子图添加图例
 if add_sd:
@@ -482,7 +436,7 @@ ax.legend(legends, fontsize=15, loc='lower center')  # , loc='lower center'
 ax.set_ylabel('Normalized AUC')
 ax.set_xticks(ind + width)
 ax.set_xticklabels(agents)
-ax.set_ylim([0.95, 1])
+ax.set_ylim([0.975, 1])
 # ax.set_xlabel('Agents')
 plt.grid(axis='y')
 plt.show()

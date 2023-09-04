@@ -233,17 +233,29 @@ def moving_average(data_list, window_size=100):
 # ]
 
 # 冰冻难地图参数
+# log_paths = [
+#     'Q_learning_M1720Forzen_noHRwd_5flod_ep50000_2023-06-18-03-07-40',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FL_8LStep_ep50000_2023-06-18-03-36-13',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_ep50000_2023-07-27-15-32-30',  # 衰减200轮 - 很慢
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-27-02-38-04',  # 衰减2500轮
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-02-51-11', # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-43-33',  # 渐变1阶 5000轮
+#     'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-18-25-35',  # 衰减10000轮
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_8LStep_ep50000_2023-07-27-16-18-14',  # 衰减15000轮
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-01-43-30', # 衰减50000轮
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_50000_1.0_0_8LStep_ep50000_2023-08-30-20-54-34', # 衰减50000轮到0
+#     'Q_learning_M1720Forzen_noHRwd_5flod_FLAll_8LStep_ep50000_2023-06-18-04-19-31',
+
+# ]
+
 log_paths = [
     'Q_learning_M1720Forzen_noHRwd_5flod_ep50000_2023-06-18-03-07-40',
     'Q_learning_M1720Forzen_noHRwd_5flod_FL_8LStep_ep50000_2023-06-18-03-36-13',
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_ep50000_2023-07-27-15-32-30',  # 衰减200轮 - 很慢
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-27-02-38-04',  # 衰减2500轮
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-02-51-11', # 'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-01-43-33',  # 渐变1阶 5000轮
-    'Q_learning_M1720Forzen_noHRwd_FLDynamicAvg_8LStep_ep50000_2023-06-19-18-25-35',  # 衰减10000轮
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLGreedEpsilon_8LStep_ep50000_2023-07-27-16-18-14',  # 衰减15000轮
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_8LStep_ep50000_2023-06-20-01-43-30', # 衰减50000轮
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_50000_1.0_0_8LStep_ep50000_2023-08-30-20-54-34', # 衰减50000轮到0
-    'Q_learning_M1720Forzen_noHRwd_5flod_FLAll_8LStep_ep50000_2023-06-18-04-19-31',
+    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_163_8LStep_ep50000_2023-08-31-16-27-38',
+    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_172_8LStep_ep50000_2023-08-31-00-49-06',
+    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_172_8LStep_ep50000_2023-08-31-00-49-07',
+    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_253_8LStep_ep50000_2023-08-31-16-27-44',
+    'Q_learning_M1720Forzen_noHRwd_5flod_FLDynamicAvg_262_8LStep_ep50000_2023-08-31-16-27-44',
+    'Q_learning_M1720Forzen_noHRwd_5flod_FLAll_8LStep_ep50000_2023-06-18-04-19-31'
 
 ]
 
@@ -263,6 +275,7 @@ log_paths = [
 
 # 冰冻动态地图参数实验
 # log_paths = [
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_ep50000_2023-06-23-22-27-20',
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FL_8LStep_ep50000_2023-06-23-23-03-03',
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_200_8LStep_ep50000_2023-08-30-17-34-58',
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_2500_8LStep_ep50000_2023-08-30-17-34-59',
@@ -270,9 +283,24 @@ log_paths = [
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_10000_8LStep_ep50000_2023-08-30-17-36-09',
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_15000_8LStep_ep50000_2023-08-30-17-36-17',
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_50000_8LStep_ep50000_2023-08-30-17-37-49',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_172_8LStep_ep50000_2023-08-31-00-58-29', 
 #     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_inf_8LStep_ep50000_2023-08-30-17-39-31'
 
 # ]
+
+# log_paths = [
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_ep50000_2023-06-23-22-27-20',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FL_8LStep_ep50000_2023-06-23-23-03-03',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_163_8LStep_ep50000_2023-08-31-16-35-44',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_172_8LStep_ep50000_2023-08-31-00-58-29',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_172_8LStep_ep50000_2023-08-31-16-35-50',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_253_8LStep_ep50000_2023-08-31-16-35-48',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLDynamicAvg_262_8LStep_ep50000_2023-08-31-16-35-51',
+#     'Q_learning_M1720Forzen_noHRwd_5flod_dynamic_FLGreedEpsilon_inf_8LStep_ep50000_2023-08-30-17-39-31'
+
+# ]
+
+
 
 for i, path in enumerate(log_paths):
     log_paths[i] = './logs/' + path + '/'
@@ -317,7 +345,9 @@ env_size = 17
 # legends = ['FL', '5000', '10000', '500000']
 # legends = ['Q-Learning', 'SQ', 'QAvg', 'QGradual', 'Q-ER', 'DoubleQ']
 # legends = ['Decay-0(FedAvg)', 'Decay-100', 'Decay-500', 'Decay-1000', 'NoDecay']
-legends = ['QLearning', 'Decay-0(FedAvg)', 'Decay-200', 'Decay-2500', 'Decay-5000', 'Decay-10000', 'Decay-15000', 'Decay-50000', 'Decay-50000-0', 'NoDecay']
+legends = ['QLearning', 'Decay-0(FedAvg)', 'Decay-163',
+            'Decay-172', 'Decay-172-2', 'Decay-253',
+              'Decay-262', 'NoDecay']
 # legends = ['Q-Learning', 'SQ', 'QAvg', 'QGradual', 'DoubleQ']
 
 # legends = ['INDL', 'SQ', 'QAvg', 'QMax', 'QAll', 'FLGreedEpsilon']
@@ -478,7 +508,7 @@ ax.legend(legends, fontsize=15, loc='lower center')  # , loc='lower center'
 ax.set_ylabel('Normalized AUC')
 ax.set_xticks(ind + width)
 ax.set_xticklabels(agents)
-ax.set_ylim([0.95, 1])
+ax.set_ylim([0.90, 1])
 # ax.set_xlabel('Agents')
 plt.grid(axis='y')
 plt.show()
@@ -935,4 +965,31 @@ plt.show()
 # # 显示图像
 # plt.show()
 
-# # %%
+#% %
+def compute_kappa_1(probabilities):
+    # 计算平均状态转移概率
+    avg_probs = [sum(x)/len(probabilities) for x in zip(*probabilities)]
+
+    # 计算每个环境与平均值之间的差异
+    deltas = []
+    for probs in probabilities:
+        delta = sum([abs(p - avg) for p, avg in zip(probs, avg_probs)])
+        deltas.append(delta)
+
+    # 返回deltas中的最大值作为kappa_1
+    return max(deltas)
+
+# 测试函数
+e1 = 0.9
+e2 = 0.8
+e3 = 0.7
+probabilities = [[e1, (1-e1)/2, (1-e1)/2], [e2, (1-e2)/2, (1-e2)/2], [e3, (1-e3)/2, (1-e3)/2]]
+kappa_1 = compute_kappa_1(probabilities)
+print("kappa_1:", kappa_1)
+
+# %%
+
+# 0: 8-8-8
+# 0.2: 9-8-7
+# 0.4: 9-7-5
+# 0.6: 9-2/3-1/3

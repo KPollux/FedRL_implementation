@@ -26,9 +26,10 @@ if is_ipython:
 
 plt.ion()
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
 # if GPU is to be used
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = torch.device("cuda:1")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # %%
 Transition = namedtuple('Transition',
@@ -70,7 +71,7 @@ class FLServer:
     def __init__(self, env, agents, cfg, condition):
         self.cfg = cfg
         self.env = env
-        self.device = device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.n_actions = env.action_space.n
         state, _ = env.reset()
         self.n_observations = len(state)
@@ -105,10 +106,10 @@ class FLServer:
 
             # Define the starting and ending epsilon values
             EPS_START = 1.0
-            EPS_END = 1.0 / cfg.num_agent
+            EPS_END = 1.0  #  / cfg.num_agent
 
             # Define the decay rate
-            EPS_DECAY = 500
+            EPS_DECAY = 1
 
             # Assuming that `current_round` is the current training round
             if self.i_episode < EPS_DECAY:
@@ -196,7 +197,7 @@ class DQNAgent:
         self.cfg = cfg
         self.env = env
         self.id = id
-        self.device = device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.n_actions = env.action_space.n
         state, _ = env.reset()
         self.n_observations = len(state)
@@ -268,18 +269,20 @@ class DQNAgent:
         expected_state_action_values = (next_state_values * self.cfg.GAMMA) + reward_batch
 
         # Compute Huber loss
-        criterion = nn.SmoothL1Loss()
+        # criterion = nn.SmoothL1Loss()
+        criterion = nn.MSELoss()
         loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
         # Optimize the model
         self.optimizer.zero_grad()
         loss.backward()
         # In-place gradient clipping
-        torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
+        # torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
         self.optimizer.step()
 
     async def train(self, num_episodes):
         for i_episode in trange(num_episodes):
+            episode_reward = 0
             self.i_episode = i_episode
             # Initialize the environment and get it's state
             state, info = self.env.reset()
@@ -288,9 +291,11 @@ class DQNAgent:
 
                 action = self.select_action(state)
                 observation, reward, terminated, truncated, _ = self.env.step(action.item())
+                episode_reward += reward
+                # print('agent: ', self.id, 'episode: ', i_episode, 'step: ', t, 'reward: ', reward)
                 reward = torch.tensor([reward], device=device)
-                self.done = terminated or truncated
-
+                self.done = terminated or truncated or t >= self.cfg.MAX_STEPS
+                
                 self.current_step += 1
 
                 if terminated:
@@ -320,15 +325,15 @@ class DQNAgent:
                 # θ′ ← τ θ + (1 −τ )θ′
                 target_net_state_dict = self.target_net.state_dict()
                 policy_net_state_dict = self.policy_net.state_dict()
-                for key in policy_net_state_dict:
-                    target_net_state_dict[key] = policy_net_state_dict[key]*cfg.TAU + target_net_state_dict[key]*(1-cfg.TAU)
-                self.target_net.load_state_dict(target_net_state_dict)
+                # for key in policy_net_state_dict:
+                #     target_net_state_dict[key] = policy_net_state_dict[key]*cfg.TAU + target_net_state_dict[key]*(1-cfg.TAU)
+                # self.target_net.load_state_dict(target_net_state_dict)
 
-                # if self.current_step % 100 == 0:
-                #     self.target_net.load_state_dict(policy_net_state_dict)
+                if self.current_step % 100 == 0:
+                    self.target_net.load_state_dict(policy_net_state_dict)
 
                 if self.done:
-                    self.episode_durations.append(t + 1)
+                    self.episode_durations.append(episode_reward)
                     # plot_durations()
                     break
         # print('Complete')
@@ -350,22 +355,24 @@ class DQNAgent:
 # LR is the learning rate of the ``AdamW`` optimizer
 cfg = edict()
 
-cfg.BATCH_SIZE = 128
+cfg.BATCH_SIZE = 64  # 128
 cfg.GAMMA = 0.99
 cfg.EPS_START = 0.9
 cfg.EPS_END = 0.05
 cfg.EPS_DECAY = 1000
 cfg.TAU = 0.005
-cfg.LR = 1e-4
+cfg.LR = 1e-4  # 1e-4
+
+cfg.MAX_STEPS = 100
 
 cfg.num_agent = 3
 cfg.local_step = 8
 
 
-cfg.ShareQ = False
-cfg.FL = True
+cfg.ShareQ = True
+cfg.FL = False
 METHODS = ['FedAvg', 'FedGradual']
-cfg.aggregation_method = METHODS[0]
+cfg.aggregation_method = METHODS[1]
 
 
 
@@ -395,7 +402,7 @@ def plot_durations(episode_durations, show_result=False):
             display.display(plt.gcf())
 
 if torch.cuda.is_available():
-    num_episodes = 500
+    num_episodes = 100
 else:
     num_episodes = 50
 # %%
@@ -403,8 +410,8 @@ else:
 # agent = DQNAgent(gym.make("CartPole-v1"), cfg)
 # agent.train(num_episodes)
 condition = asyncio.Condition()
-agents = [DQNAgent(gym.make('Acrobot-v1'), cfg, condition, id) for id in range(cfg.num_agent)] 
-server = FLServer(gym.make('Acrobot-v1'), agents, cfg, condition)
+agents = [DQNAgent(gym.make("Acrobot-v1"), cfg, condition, id) for id in range(cfg.num_agent)] 
+server = FLServer(gym.make("Acrobot-v1"), agents, cfg, condition)
 
 for agent in agents:
     agent.policy_net.load_state_dict(server.global_model.state_dict())
@@ -433,7 +440,7 @@ await train()
 # %%
 
 print('Complete')
-plot_durations(agents[2].episode_durations, show_result=True)
+plot_durations(agents[0].episode_durations, show_result=True)
 plt.ioff()
 plt.show()
 # %%

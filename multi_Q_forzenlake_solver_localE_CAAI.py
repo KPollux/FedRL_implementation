@@ -51,7 +51,7 @@ def train(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fa
     #         ]
     if dynamic:
         wall_positions=[(16, 9), (15, 9), (14, 12)]
-        wall_odds=[0.9, 0.7, 0.6]
+        wall_odds=[0.4, 0.3, 0.2]
     else:
         wall_positions = wall_odds = None
     # env = MeetingGridworld(size=SIZE, n_agents=2, heuristic_reward=True, maze=MAZE)
@@ -390,7 +390,7 @@ def train(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fa
     # name the save floder
 
     if floder_name is None:
-        prefix = 'Q_learning_M1720Forzen_noHRwd_5flod_'
+        prefix = 'Q_learning_M1720Forzen_Dy432_5flod_'
 
         floder_name = prefix  # M17_20_all_delta_
 
@@ -459,22 +459,44 @@ def train(share_params=False, FL=False, role=False, share_memory=False, FLMax=Fa
 from multiprocessing import Process
 
 # EPS_DECAYs = [200, 2500, 5000, 10000, 15000, 50000, np.inf]
-DECAY_RATIOs = [[0.1, 0.7, 0.2], [0.2, 0.6, 0.2], [0.1, 0.6, 0.3], [0.2, 0.5, 0.3]]
+# DECAY_RATIOs = [[0.1, 0.7, 0.2], [0.2, 0.6, 0.2], [0.1, 0.6, 0.3], [0.2, 0.5, 0.3]]
+# DECAY_RATIOs = [[0.22, 0.5, 0.28]]
 
-def process_function(EPS_DECAY):
+def process_FLDynamicAvg():
     floder_name = None
     for n in trange(5):
         train_history, policy_nets, floder_name = train(FLDynamicAvg=True,
-                                                        dynamic=False,
+                                                        dynamic=True,
                                                         floder_name=floder_name, n_times=n,
-                                                        DECAY_RATIO=EPS_DECAY)
+                                                        DECAY_RATIO=[0.22, 0.5, 0.28])
+
+def process_FL():
+    floder_name = None
+    for n in trange(5):
+        train_history, policy_nets, floder_name = train(dynamic=True,
+                                                        floder_name=floder_name, n_times=n)          
+
+def process_QLearning():
+    floder_name = None
+    for n in trange(5):
+        train_history, policy_nets, floder_name = train(FL=True,
+                                                        dynamic=True,
+                                                        floder_name=floder_name, n_times=n)                                         
 
 if __name__ == '__main__':
     processes = []
-    for EPS_DECAY in DECAY_RATIOs:
-        p = Process(target=process_function, args=(EPS_DECAY,))
-        processes.append(p)
-        p.start()
+
+    p = Process(target=process_FLDynamicAvg)  # , args=(EPS_DECAY,))
+    processes.append(p)
+    p.start()
+
+    p = Process(target=process_FL)  # , args=(EPS_DECAY,))
+    processes.append(p)
+    p.start()
+
+    p = Process(target=process_QLearning)  # , args=(EPS_DECAY,))
+    processes.append(p)
+    p.start()
 
     for p in processes:
         p.join()
