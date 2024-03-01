@@ -807,3 +807,39 @@ if __name__ == '__main__':
 
 # plt.plot(progress)
 
+# %%
+import matplotlib.pyplot as plt
+
+# Define the starting and ending epsilon values
+es = []
+EPISODES = 1000
+
+DECAY_RATIO = [0.2, 0.6, 0.2]
+
+for i_episode in range(EPISODES):
+    EPS_START = 1.0
+    EPS_END = 0
+
+    DECAY_RATIO = DECAY_RATIO
+    one_third = 1 / 3
+
+    # Define the episode thresholds for each decay phase
+    first_phase_end = EPISODES * DECAY_RATIO[0]
+    second_phase_end = EPISODES * (DECAY_RATIO[0] + DECAY_RATIO[1])
+
+    if i_episode < first_phase_end:
+        # First phase of episodes
+        epsilon = 1 - ((1 - one_third) * (i_episode / first_phase_end))
+    elif i_episode < second_phase_end:
+        # Second phase of episodes
+        epsilon = one_third
+    else:
+        # Last phase of episodes
+        epsilon = one_third - ((one_third) * ((i_episode - second_phase_end) / (EPISODES - second_phase_end)))
+
+    es.append(epsilon)
+plt.grid()
+plt.plot(es)
+plt.xlabel('Episode')
+plt.ylabel('Epsilon')
+# %%
